@@ -2,44 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase Auth Test</title>
+  <title>LinkedIn Callback</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    input, button { margin: 5px; padding: 5px; }
     #status { color: green; }
     #error { color: red; }
   </style>
 </head>
 <body>
-  <h2>Firebase Auth Demo</h2>
-
-  <!-- Email Signup/Login -->
-  <div>
-    <h3>Email Signup/Login</h3>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <br/>
-    <button onclick="signupEmail()">Sign Up</button>
-    <button onclick="loginEmail()">Log In</button>
-    <button onclick="logout()">Log Out</button>
-  </div>
-
-  <!-- Phone OTP Auth -->
-  <div>
-    <h3>Phone Signup/Login</h3>
-    <input type="text" id="phone" placeholder="+1234567890" />
-    <div id="recaptcha-container"></div>
-    <button onclick="sendOTP()">Send OTP</button>
-    <input type="text" id="otp" placeholder="Enter OTP" />
-    <button onclick="verifyOTP()">Verify OTP</button>
-  </div>
-
-  <!-- LinkedIn Auth -->
-  <div>
-    <h3>LinkedIn Signup/Login</h3>
-    <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
-  </div>
-
+  <h2>Processing LinkedIn Login...</h2>
   <div id="status"></div>
   <div id="error"></div>
 
@@ -48,7 +19,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="./firebaseConfig.js"></script>
   <script>
-    // Initialize Firebase
+    // Initialize Firebase (ensure firebaseConfig.js is correctly linked)
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
@@ -65,82 +36,74 @@
       statusDiv.textContent = '';
     }
 
-    // ✅ Email Signup
-    function signupEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(user => showStatus("Signup successful: " + user.user.uid))
-        .catch(err => showError("Signup error: " + err.message));
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const storedState = sessionStorage.getItem('linkedin_oauth_state');
 
-    // ✅ Email Login
-    function loginEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(user => showStatus("Login successful: " + user.user.uid))
-        .catch(err => showError("Login error: " + err.message));
-    }
+      console.log('linkedin-callback.html: URL state parameter:', state); // DEBUG LOG
+      console.log('linkedin-callback.html: Stored state from sessionStorage:', storedState); // DEBUG LOG
 
-    // ✅ Logout
-    function logout() {
-      auth.signOut()
-        .then(() => showStatus("Logged out"))
-        .catch(err => showError("Logout error: " + err.message));
-    }
-
-    // ✅ reCAPTCHA Setup (once)
-    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      'size': 'normal',
-      'callback': response => {
-        showStatus("reCAPTCHA solved. You can now send OTP.");
-      }
-    });
-
-    let confirmationResult;
-
-    // ✅ Send OTP
-    function sendOTP() {
-      const phone = document.getElementById('phone').value;
-      const appVerifier = window.recaptchaVerifier;
-      auth.signInWithPhoneNumber(phone, appVerifier)
-        .then(result => {
-          confirmationResult = result;
-          showStatus("OTP sent. Enter it below.");
-        })
-        .catch(err => showError("OTP send error: " + err.message));
-    }
-
-    // ✅ Verify OTP
-    function verifyOTP() {
-      const code = document.getElementById('otp').value;
-      if (!confirmationResult) {
-        showError("Send OTP first");
+      // Basic CSRF protection: Verify the state parameter
+      if (state !== storedState) {
+        showError("State mismatch. Possible CSRF attack.");
+        console.error('State mismatch detected! URL state:', state, 'Stored state:', storedState); // DEBUG LOG
         return;
       }
-      confirmationResult.confirm(code)
-        .then(result => showStatus("Phone login success: " + result.user.uid))
-        .catch(err => showError("OTP verify error: " + err.message));
-    }
+      sessionStorage.removeItem('linkedin_oauth_state'); // Clear the stored state
 
-    // ✅ LinkedIn Login (initiates the OAuth flow)
-    function loginWithLinkedIn() {
-        const clientId = '86crgnew3xgywt'; // Replace with your actual Client ID
-        const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Ensure this matches your LinkedIn App settings
-        const state = Math.random().toString(36).substring(2); // Generate a random state for CSRF protection
-
-        // --- IMPORTANT CHANGE HERE ---
-        // Use the new OIDC scopes: 'openid profile email'
-        const scope = 'openid profile email'; // 'email' replaces 'r_emailaddress', 'profile' replaces 'r_liteprofile'
-
-        // Store state in session storage to verify it later in the callback
-        sessionStorage.setItem('linkedin_oauth_state', state);
-        console.log('index.html: Stored state in sessionStorage:', state); // DEBUG LOG
-
-        const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
-        window.location.href = linkedInAuthURL;
-    }
+      if (code) {
+        showStatus("Received LinkedIn authorization code. Sending to backend...");
+        console.log('linkedin-callback.html: Authorization code received, attempting to send to backend.'); // DEBUG LOG
+        // Send the authorization code to your Django backend
+        // This endpoint should match the URL you define in Django (e.g., /api/auth/linkedin-callback/)
+        fetch('/api/auth/linkedin-callback/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code: code, state: state }),
+        })
+        .then(response => {
+          console.log('linkedin-callback.html: Backend response status:', response.status); // DEBUG LOG
+          if (!response.ok) {
+            return response.json().then(errorData => { throw new Error(errorData.error || 'Unknown backend error'); });
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('linkedin-callback.html: Backend response data:', data); // DEBUG LOG
+          if (data.firebase_token) {
+            auth.signInWithCustomToken(data.firebase_token)
+              .then(userCredential => {
+                // --- IMPORTANT CHANGE HERE ---
+                // Redirect to index.html with success parameters
+                const userId = userCredential.user.uid;
+                console.log('Firebase sign-in successful:', userId); // DEBUG LOG
+                window.location.href = `/?linkedin_auth_success=true&uid=${userId}`;
+              })
+              .catch(error => {
+                showError("Firebase custom token sign-in error: " + error.message);
+                console.error('Firebase custom token sign-in error:', error); // DEBUG LOG
+              });
+          } else {
+            showError("No Firebase token received from backend: " + (data.error || "Unknown error"));
+            console.error('No Firebase token from backend:', data); // DEBUG LOG
+          }
+        })
+        .catch(error => {
+          showError("Error during LinkedIn authentication: " + error.message);
+          console.error('Error during LinkedIn authentication fetch:', error); // DEBUG LOG
+        });
+      } else if (urlParams.get('error')) {
+        showError("LinkedIn authentication error: " + urlParams.get('error_description') || urlParams.get('error'));
+        console.error('LinkedIn OAuth error in URL:', urlParams.get('error_description') || urlParams.get('error')); // DEBUG LOG
+      } else {
+        showError("No LinkedIn authorization code found in URL.");
+        console.warn('No LinkedIn authorization code found in URL.'); // DEBUG LOG
+      }
+    });
   </script>
 </body>
 </html>
