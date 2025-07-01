@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LinkedIn Callback</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #status { color: green; }
+    #error { color: red; }
+  </style>
+</head>
+<body>
+  <h2>Processing LinkedIn Login...</h2>
+  <div id="status"></div>
+  <div id="error"></div>
+
+  <!-- Firebase JS SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="./firebaseConfig.js"></script>
+  <script>
+    // Initialize Firebase (ensure firebaseConfig.js is correctly linked)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const statusDiv = document.getElementById('status');
+    const errorDiv = document.getElementById('error');
+
+    function showStatus(msg) {
+      statusDiv.textContent = msg;
+      errorDiv.textContent = '';
+    }
+
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      statusDiv.textContent = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const storedState = sessionStorage.getItem('linkedin_oauth_state');
+
+      // Basic CSRF protection: Verify the state parameter
+      if (state !== storedState) {
+        showError("State mismatch. Possible CSRF attack.");
+        return;
+      }
+      sessionStorage.removeItem('linkedin_oauth_state'); // Clear the stored state
+
+      if (code) {
+        showStatus("Received LinkedIn authorization code. Sending to backend...");
+        // Send the authorization code to your Django backend
+        // This endpoint should match the URL you define in Django (e.g., /api/auth/linkedin-callback/)
+        fetch('/api/auth/linkedin-callback/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code: code, state: state }),
+        })
+        .then(response => {
+          if (!response.ok) {
+            // If the response is not OK (e.g., 4xx or 5xx), parse error message
+            return response.json().then(errorData => { throw new Error(errorData.error || 'Unknown backend error'); });
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.firebase_token) {
+            // Sign in to Firebase with the custom token received from Django
+            auth.signInWithCustomToken(data.firebase_token)
+              .then(userCredential => {
+                showStatus("Successfully signed in with Firebase via LinkedIn! User ID: " + userCredential.user.uid);
+                // Redirect to your main application dashboard or home page
+                window.location.href = '/'; // Adjust this to your actual main app path
+              })
+              .catch(error => {
+                showError("Firebase custom token sign-in error: " + error.message);
+              });
+          } else {
+            showError("No Firebase token received from backend: " + (data.error || "Unknown error"));
+          }
+        })
+        .catch(error => {
+          showError("Error during LinkedIn authentication: " + error.message);
+        });
+      } else if (urlParams.get('error')) {
+        showError("LinkedIn authentication error: " + urlParams.get('error_description') || urlParams.get('error'));
+      } else {
+        showError("No LinkedIn authorization code found in URL.");
+      }
+    });
+  </script>
+</body>
+</html>
