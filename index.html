@@ -129,12 +129,12 @@
         // IMPORTANT: Replace with your actual LinkedIn Client ID and the correct redirect_uri
         // The redirect_uri MUST be registered in your LinkedIn Developer application settings.
         // It should point to the 'linkedin-callback.html' file you will create.
-        const clientId = 'YOUR_LINKEDIN_CLIENT_ID';
-        const redirectUri = 'https://your-username.github.io/firebase-auth/linkedin-callback.html'; // Adjust this to your actual hosted path
+        const clientId = '86crgnew3xgywt';
+        const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Adjust this to your actual hosted path
         const state = Math.random().toString(36).substring(2); // Generate a random state for CSRF protection
         const scope = 'r_liteprofile r_emailaddress openid profile email'; // Request necessary scopes
 
-        // Store state in session storage to verify it later in the callback
+        // Store state in session storage to verify it later in the callbacka
         sessionStorage.setItem('linkedin_oauth_state', state);
 
         const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
