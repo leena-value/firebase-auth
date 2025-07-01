@@ -58,7 +58,7 @@
         console.log('linkedin-callback.html: Authorization code received, attempting to send to backend.'); // DEBUG LOG
         // Send the authorization code to your Django backend
         // This endpoint should match the URL you define in Django (e.g., /api/auth/linkedin-callback/)
-        fetch('/api/auth/linkedin-callback/', {
+        fetch('http://127.0.0.1:8000/api/auth/linkedin-callback/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
