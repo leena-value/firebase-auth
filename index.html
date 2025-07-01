@@ -132,9 +132,9 @@
         const clientId = '86crgnew3xgywt';
         const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Adjust this to your actual hosted path
         const state = Math.random().toString(36).substring(2); // Generate a random state for CSRF protection
-        const scope = 'r_liteprofile r_emailaddress openid profile email'; // Request necessary scopes
+        const scope = 'openid profile email'; // Request necessary scopes
 
-        // Store state in session storage to verify it later in the callbacka
+        // Store state in session storage to verify it later in the callback
         sessionStorage.setItem('linkedin_oauth_state', state);
 
         const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
