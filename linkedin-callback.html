@@ -4,22 +4,30 @@
   <meta charset="UTF-8" />
   <title>LinkedIn Callback</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #status { color: green; }
-    #error { color: red; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #status {
+      color: green;
+    }
+    #error {
+      color: red;
+    }
   </style>
 </head>
 <body>
-  <h2>Processing LinkedIn Login...</h2>
+  <h2>Processing LinkedIn Login</h2>
   <div id="status"></div>
   <div id="error"></div>
 
-  <!-- Firebase JS SDKs -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="./firebaseConfig.js"></script>
+  <script src="firebaseConfig.js"></script>
+
   <script>
-    // Initialize Firebase (ensure firebaseConfig.js is correctly linked)
+    // Initialize Firebase (make sure firebaseConfig is defined in firebaseConfig.js)
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
@@ -42,22 +50,22 @@
       const state = urlParams.get('state');
       const storedState = sessionStorage.getItem('linkedin_oauth_state');
 
-      console.log('linkedin-callback.html: URL state parameter:', state); // DEBUG LOG
-      console.log('linkedin-callback.html: Stored state from sessionStorage:', storedState); // DEBUG LOG
+      console.log('linkedin-callback.html: URL state parameter:', state);
+      console.log('linkedin-callback.html: Stored state from sessionStorage:', storedState);
 
-      // Basic CSRF protection: Verify the state parameter
-      if (state !== storedState) {
+      // Validate state (CSRF protection)
+      if (!state || !storedState || state !== storedState) {
         showError("State mismatch. Possible CSRF attack.");
-        console.error('State mismatch detected! URL state:', state, 'Stored state:', storedState); // DEBUG LOG
+        console.error('State mismatch detected! URL state:', state, 'Stored state:', storedState);
         return;
       }
-      sessionStorage.removeItem('linkedin_oauth_state'); // Clear the stored state
+
+      sessionStorage.removeItem('linkedin_oauth_state'); // Clean up
 
       if (code) {
         showStatus("Received LinkedIn authorization code. Sending to backend...");
-        console.log('linkedin-callback.html: Authorization code received, attempting to send to backend.'); // DEBUG LOG
-        // Send the authorization code to your Django backend
-        // This endpoint should match the URL you define in Django (e.g., /api/auth/linkedin-callback/)
+        console.log('linkedin-callback.html: Authorization code received, sending to backend.');
+
         fetch('http://127.0.0.1:8000/api/auth/linkedin-callback/', {
           method: 'POST',
           headers: {
@@ -65,43 +73,50 @@
           },
           body: JSON.stringify({ code: code, state: state }),
         })
-        .then(response => {
-          console.log('linkedin-callback.html: Backend response status:', response.status); // DEBUG LOG
-          if (!response.ok) {
-            return response.json().then(errorData => { throw new Error(errorData.error || 'Unknown backend error'); });
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log('linkedin-callback.html: Backend response data:', data); // DEBUG LOG
-          if (data.firebase_token) {
-            auth.signInWithCustomToken(data.firebase_token)
-              .then(userCredential => {
-                // --- IMPORTANT CHANGE HERE ---
-                // Redirect to index.html with success parameters
-                const userId = userCredential.user.uid;
-                console.log('Firebase sign-in successful:', userId); // DEBUG LOG
-                window.location.href = `/?linkedin_auth_success=true&uid=${userId}`;
-              })
-              .catch(error => {
-                showError("Firebase custom token sign-in error: " + error.message);
-                console.error('Firebase custom token sign-in error:', error); // DEBUG LOG
+          .then(response => {
+            console.log('linkedin-callback.html: Backend response status:', response.status);
+            if (!response.ok) {
+              return response.json().then(errorData => {
+                throw new Error(errorData.error || 'Unknown backend error');
+              }).catch(() => {
+                throw new Error('Backend returned error, but not in JSON format');
               });
-          } else {
-            showError("No Firebase token received from backend: " + (data.error || "Unknown error"));
-            console.error('No Firebase token from backend:', data); // DEBUG LOG
-          }
-        })
-        .catch(error => {
-          showError("Error during LinkedIn authentication: " + error.message);
-          console.error('Error during LinkedIn authentication fetch:', error); // DEBUG LOG
-        });
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('linkedin-callback.html: Backend response data:', data);
+            if (data.firebase_token) {
+              auth.signInWithCustomToken(data.firebase_token)
+                .then(userCredential => {
+                  const userId = userCredential.user.uid;
+                  console.log('Firebase sign-in successful. UID:', userId);
+
+                  // Store UID in session storage instead of exposing in URL
+                  sessionStorage.setItem('firebase_uid', userId);
+                  window.location.href = `/?linkedin_auth_success=true`;
+                })
+                .catch(error => {
+                  showError("Firebase custom token sign-in error: " + error.message);
+                  console.error('Firebase custom token sign-in error:', error);
+                });
+            } else {
+              showError("No Firebase token received from backend: " + (data.error || "Unknown error"));
+              console.error('No Firebase token from backend:', data);
+            }
+          })
+          .catch(error => {
+            showError("Error during LinkedIn authentication: " + error.message);
+            console.error('Error during LinkedIn authentication fetch:', error);
+          });
+
       } else if (urlParams.get('error')) {
-        showError("LinkedIn authentication error: " + urlParams.get('error_description') || urlParams.get('error'));
-        console.error('LinkedIn OAuth error in URL:', urlParams.get('error_description') || urlParams.get('error')); // DEBUG LOG
+        const errorMsg = urlParams.get('error_description') || urlParams.get('error');
+        showError("LinkedIn authentication error: " + errorMsg);
+        console.error('LinkedIn OAuth error in URL:', errorMsg);
       } else {
         showError("No LinkedIn authorization code found in URL.");
-        console.warn('No LinkedIn authorization code found in URL.'); // DEBUG LOG
+        console.warn('No LinkedIn authorization code found in URL.');
       }
     });
   </script>

@@ -1,155 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Firebase Auth Test</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    input, button { margin: 5px; padding: 5px; }
-    #status { color: green; }
-    #error { color: red; }
-  </style>
+<meta charset="UTF-8" />
+<title>Firebase Auth Test</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+input, button { margin: 5px; padding: 5px; }
+#status { color: green; }
+#error { color: red; }
+.hidden { display: none; }
+</style>
 </head>
 <body>
-  <h2>Firebase Auth Demo</h2>
+<h2>Firebase Auth Demo</h2>
 
-  <!-- Email Signup/Login -->
-  <div>
-    <h3>Email Signup/Login</h3>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <br/>
-    <button onclick="signupEmail()">Sign Up</button>
-    <button onclick="loginEmail()">Log In</button>
-    <button onclick="logout()">Log Out</button>
-  </div>
+    <div>
+    <h3>Email Signup/Login</h3>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <br/>
+    <button onclick="signupEmail()">Sign Up</button>
+    <button onclick="loginEmail()">Log In</button>
+    <button onclick="logout()">Log Out</button>
+    <button onclick="showForgotPassword()">Forgot Password?</button>
+  </div>
 
-  <!-- Phone OTP Auth -->
-  <div>
-    <h3>Phone Signup/Login</h3>
-    <input type="text" id="phone" placeholder="+1234567890" />
-    <div id="recaptcha-container"></div>
-    <button onclick="sendOTP()">Send OTP</button>
-    <input type="text" id="otp" placeholder="Enter OTP" />
-    <button onclick="verifyOTP()">Verify OTP</button>
-  </div>
+    <div id="forgotPasswordSection" class="hidden">
+        <h3>Forgot Password</h3>
+        <input type="email" id="forgotEmail" placeholder="Enter your email" />
+        <button onclick="sendPasswordResetEmail()">Send Reset Email</button>
+        <div id="otpVerificationSection" class="hidden">
+            <input type="text" id="forgotOtp" placeholder="Enter OTP" />
+            <button onclick="verifyPasswordResetOtp()">Verify OTP</button>
+        </div>
+        <div id="newPasswordSection" class="hidden">
+            <input type="password" id="newPassword" placeholder="New Password" />
+            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" />
+            <button onclick="resetPassword()">Reset Password</button>
+        </div>
+        <button onclick="hideForgotPassword()">Cancel</button>
+    </div>
 
-  <!-- LinkedIn Auth -->
-  <div>
-    <h3>LinkedIn Signup/Login</h3>
-    <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
-  </div>
+    <div>
+    <h3>LinkedIn Signup/Login</h3>
+    <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
+  </div>
 
-  <div id="status"></div>
-  <div id="error"></div>
+  <div id="status"></div>
+  <div id="error"></div>
 
-  <!-- Firebase JS SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="./firebaseConfig.js"></script>
-  <script>
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="./firebaseConfig.js"></script>
+  <script>
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    const statusDiv = document.getElementById('status');
-    const errorDiv = document.getElementById('error');
+    const statusDiv = document.getElementById('status');
+    const errorDiv = document.getElementById('error');
+    const forgotPasswordSection = document.getElementById('forgotPasswordSection');
+    const otpVerificationSection = document.getElementById('otpVerificationSection');
+    const newPasswordSection = document.getElementById('newPasswordSection');
 
-    function showStatus(msg) {
-      statusDiv.textContent = msg;
-      errorDiv.textContent = '';
+
+    function showStatus(msg) {
+      statusDiv.textContent = msg;
+      errorDiv.textContent = '';
+    }
+
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      statusDiv.textContent = '';
+    }
+
+    function showForgotPassword() {
+        forgotPasswordSection.classList.remove('hidden');
+        otpVerificationSection.classList.add('hidden');
+        newPasswordSection.classList.add('hidden');
+        document.getElementById('forgotEmail').value = '';
+        document.getElementById('forgotOtp').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmNewPassword').value = '';
+        showStatus('');
+        showError('');
     }
 
-    function showError(msg) {
-      errorDiv.textContent = msg;
-      statusDiv.textContent = '';
+    function hideForgotPassword() {
+        forgotPasswordSection.classList.add('hidden');
+        showStatus('');
+        showError('');
     }
 
-    // ✅ Email Signup
-    function signupEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(user => showStatus("Signup successful: " + user.user.uid))
-        .catch(err => showError("Signup error: " + err.message));
-    }
+    // Password reset state (for OTP and new password)
+    let passwordResetEmail = '';
+    let passwordResetOobCode = '';
 
-    // ✅ Email Login
-    function loginEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(user => showStatus("Login successful: " + user.user.uid))
-        .catch(err => showError("Login error: " + err.message));
-    }
+    // ✅ Email Signup
+    function signupEmail() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
 
-    // ✅ Logout
-    function logout() {
-      auth.signOut()
-        .then(() => showStatus("Logged out"))
-        .catch(err => showError("Logout error: " + err.message));
-    }
-
-    // ✅ reCAPTCHA Setup (once)
-    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      'size': 'normal',
-      'callback': response => {
-        showStatus("reCAPTCHA solved. You can now send OTP.");
-      }
-    });
-
-    let confirmationResult;
-
-    // ✅ Send OTP
-    function sendOTP() {
-      const phone = document.getElementById('phone').value;
-      const appVerifier = window.recaptchaVerifier;
-      auth.signInWithPhoneNumber(phone, appVerifier)
-        .then(result => {
-          confirmationResult = result;
-          showStatus("OTP sent. Enter it below.");
-        })
-        .catch(err => showError("OTP send error: " + err.message));
-    }
-
-    // ✅ Verify OTP
-    function verifyOTP() {
-      const code = document.getElementById('otp').value;
-      if (!confirmationResult) {
-        showError("Send OTP first");
-        return;
-      }
-      confirmationResult.confirm(code)
-        .then(result => showStatus("Phone login success: " + result.user.uid))
-        .catch(err => showError("OTP verify error: " + err.message));
-    }
-
-    // ✅ LinkedIn Login (initiates the OAuth flow)
-    function loginWithLinkedIn() {
-        const clientId = '86crgnew3xgywt'; // Replace with your actual Client ID
-        const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Ensure this matches your LinkedIn App settings
-        const state = Math.random().toString(36).substring(2);
-        const scope = 'openid profile email';
-
-        sessionStorage.setItem('linkedin_oauth_state', state);
-        console.log('index.html: Stored state in sessionStorage:', state); // DEBUG LOG
-
-        const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
-        window.location.href = linkedInAuthURL;
-    }
-
-    // --- IMPORTANT NEW CODE FOR LINKEDIN SUCCESS MESSAGE ---
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
-        const userId = urlParams.get('uid');
-
-        if (linkedinAuthSuccess === 'true' && userId) {
-            showStatus("LinkedIn sign-in successful: " + userId);
-            // Optionally, remove the query parameters from the URL for a cleaner look
-            history.replaceState({}, document.title, window.location.pathname);
+        if (!email || !pass) {
+            showError("Please enter both email and password for signup.");
+            return;
         }
-    });
-  </script>
+
+        if (!isValidEmail(email)) {
+            showError("Please enter a valid email address.");
+            return;
+        }
+
+        if (!isStrongPassword(pass)) {
+            showError("Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+            return;
+        }
+
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(userCredential => {
+            showStatus("Signup successful: " + userCredential.user.uid);
+            // Optionally send email verification
+            userCredential.user.sendEmailVerification()
+                .then(() => {
+                    showStatus("Signup successful. Please check your email for verification.");
+                })
+                .catch(err => {
+                    showError("Signup successful, but failed to send verification email: " + err.message);
+                });
+        })
+        .catch(err => showError("Signup error: " + err.message));
+    }
+
+    // ✅ Email Login
+    function loginEmail() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+
+        if (!email || !pass) {
+            showError("Please enter both email and password for login.");
+            return;
+        }
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(userCredential => {
+            const user = userCredential.user;
+            if (user.emailVerified) {
+                showStatus("Login successful: " + user.uid);
+            } else {
+                showError("Please verify your email address to log in. A verification email has been sent.");
+                user.sendEmailVerification(); // Resend if not verified
+                auth.signOut(); // Log out the unverified user
+            }
+        })
+        .catch(err => {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                showError("Invalid email or password.");
+            } else {
+                showError("Login error: " + err.message);
+            }
+        });
+    }
+
+    // Email and Password Validation functions
+    function isValidEmail(email) {
+        // Simple regex for email validation
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function isStrongPassword(password) {
+        // At least 6 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character
+        const minLength = 6;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
+        return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+    }
+
+    // ✅ Logout
+    function logout() {
+      auth.signOut()
+        .then(() => showStatus("Logged out"))
+        .catch(err => showError("Logout error: " + err.message));
+    }
+
+    // ✅ Send Password Reset Email
+    function sendPasswordResetEmail() {
+        passwordResetEmail = document.getElementById('forgotEmail').value;
+        if (!passwordResetEmail) {
+            showError("Please enter your email to reset password.");
+            return;
+        }
+        if (!isValidEmail(passwordResetEmail)) {
+            showError("Please enter a valid email address.");
+            return;
+        }
+
+        // Firebase password reset link sends an email with an OOB code in the URL
+        auth.sendPasswordResetEmail(passwordResetEmail)
+            .then(() => {
+                showStatus("Password reset email sent to " + passwordResetEmail + ". Please check your inbox.");
+                // For simplicity, we are not implementing OTP validation directly here with Firebase's built-in password reset.
+                // Firebase's `sendPasswordResetEmail` handles the OOB code link directly.
+                // If you *must* have an in-app OTP for password reset, you'd need a backend custom flow
+                // or use a different Firebase method (like `verifyPasswordResetCode` and `confirmPasswordReset`).
+                // For now, we assume the user clicks the link in their email.
+                // We'll hide the OTP and new password sections as the user is expected to go to their email.
+                otpVerificationSection.classList.add('hidden');
+                newPasswordSection.classList.add('hidden');
+            })
+            .catch(err => {
+                showError("Failed to send password reset email: " + err.message);
+            });
+    }
+
+    // Function to handle password reset from the email link
+    // This is typically handled on a separate page (e.g., reset-password.html)
+    // or by checking the URL parameters on page load.
+    function handlePasswordResetUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const actionCode = urlParams.get('oobCode'); // Firebase Out Of Band code
+        const continueUrl = urlParams.get('continueUrl');
+
+        if (mode === 'resetPassword' && actionCode) {
+            passwordResetOobCode = actionCode;
+            showStatus("Enter your new password below.");
+            forgotPasswordSection.classList.remove('hidden'); // Show forgot password section
+            document.getElementById('forgotEmail').classList.add('hidden'); // Hide email input
+            document.querySelector('#forgotPasswordSection button[onclick="sendPasswordResetEmail()"]').classList.add('hidden'); // Hide send button
+            otpVerificationSection.classList.add('hidden'); // Ensure OTP section is hidden
+            newPasswordSection.classList.remove('hidden'); // Show new password section
+        }
+    }
+
+    // Call this on page load to check for password reset links
+    document.addEventListener('DOMContentLoaded', handlePasswordResetUrl);
+
+    // This function will be called when the user enters the new password on the same page
+    // after clicking the email reset link.
+    function resetPassword() {
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmNewPassword').value;
+
+        if (!newPass || !confirmPass) {
+            showError("Please enter and confirm your new password.");
+            return;
+        }
+
+        if (newPass !== confirmPass) {
+            showError("Passwords do not match.");
+            return;
+        }
+
+        if (!isStrongPassword(newPass)) {
+            showError("New password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+            return;
+        }
+
+        if (!passwordResetOobCode) {
+            showError("No reset operation in progress. Please use the 'Forgot Password' link again.");
+            return;
+        }
+
+        auth.confirmPasswordReset(passwordResetOobCode, newPass)
+            .then(() => {
+                showStatus("Your password has been changed successfully. You can now log in.");
+                hideForgotPassword(); // Hide the password reset section
+                passwordResetOobCode = ''; // Clear the OOB code
+                // Optionally clear URL parameters
+                history.replaceState({}, document.title, window.location.pathname);
+            })
+            .catch(err => {
+                showError("Error resetting password: " + err.message);
+            });
+    }
+
+    // ✅ LinkedIn Login (initiates the OAuth flow)
+    function loginWithLinkedIn() {
+        const clientId = '86crgnew3xgywt'; // Replace with your actual Client ID
+        const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Ensure this matches your LinkedIn App settings
+        const state = Math.random().toString(36).substring(2);
+        const scope = 'openid profile email'; // Ensure 'email' scope is requested for fetching email
+
+        sessionStorage.setItem('linkedin_oauth_state', state);
+        console.log('index.html: Stored state in sessionStorage:', state); // DEBUG LOG
+
+        const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
+        window.location.href = linkedInAuthURL;
+    }
+
+    // --- IMPORTANT NEW CODE FOR LINKEDIN SUCCESS MESSAGE ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
+        const userId = urlParams.get('uid');
+
+        if (linkedinAuthSuccess === 'true' && userId) {
+            showStatus("LinkedIn sign-in successful: " + userId);
+            // Optionally, remove the query parameters from the URL for a cleaner look
+            history.replaceState({}, document.title, window.location.pathname);
+        }
+        // Check for password reset on page load
+        handlePasswordResetUrl();
+    });
+  </script>
 </body>
 </html>
