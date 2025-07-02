@@ -94,7 +94,7 @@
 
                   // Store UID in session storage instead of exposing in URL
                   sessionStorage.setItem('firebase_uid', userId);
-                  window.location.href = `/?linkedin_auth_success=true`;
+                  window.location.href = `/firebase-auth/?linkedin_auth_success=true&uid=${userId}`;
                 })
                 .catch(error => {
                   showError("Firebase custom token sign-in error: " + error.message);
