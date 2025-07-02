@@ -25,6 +25,14 @@ input, button { margin: 5px; padding: 5px; }
     <button onclick="showForgotPassword()">Forgot Password?</button>
   </div>
 
+    <div id="emailVerificationSection" class="hidden">
+        <h3>Verify Your Email</h3>
+        <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
+        <input type="text" id="signupOtp" placeholder="Enter OTP" />
+        <button onclick="verifySignupOtp()">Verify Email OTP</button>
+        <button onclick="resendSignupOtp()">Resend OTP</button>
+    </div>
+
     <div id="forgotPasswordSection" class="hidden">
         <h3>Forgot Password</h3>
         <input type="email" id="forgotEmail" placeholder="Enter your email" />
@@ -59,6 +67,8 @@ input, button { margin: 5px; padding: 5px; }
 
     const statusDiv = document.getElementById('status');
     const errorDiv = document.getElementById('error');
+    const emailVerificationSection = document.getElementById('emailVerificationSection');
+    const verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
     const forgotPasswordSection = document.getElementById('forgotPasswordSection');
     const otpVerificationSection = document.getElementById('otpVerificationSection');
     const newPasswordSection = document.getElementById('newPasswordSection');
@@ -69,10 +79,24 @@ input, button { margin: 5px; padding: 5px; }
       errorDiv.textContent = '';
     }
 
-    function showError(msg) {
+    function showError(msg) {
       errorDiv.textContent = msg;
       statusDiv.textContent = '';
     }
+
+    function showEmailVerification(email) {
+        emailVerificationSection.classList.remove('hidden');
+        verificationEmailDisplay.textContent = email;
+        document.getElementById('signupOtp').value = ''; // Clear previous OTP
+        showStatus('');
+        showError('');
+    }
+
+    function hideEmailVerification() {
+        emailVerificationSection.classList.add('hidden');
+        showStatus('');
+        showError('');
+    }
 
     function showForgotPassword() {
         forgotPasswordSection.classList.remove('hidden');
@@ -116,20 +140,94 @@ input, button { margin: 5px; padding: 5px; }
             return;
         }
 
-      auth.createUserWithEmailAndPassword(email, pass)
+        auth.createUserWithEmailAndPassword(email, pass)
         .then(userCredential => {
-            showStatus("Signup successful: " + userCredential.user.uid);
-            // Optionally send email verification
-            userCredential.user.sendEmailVerification()
-                .then(() => {
-                    showStatus("Signup successful. Please check your email for verification.");
-                })
-                .catch(err => {
-                    showError("Signup successful, but failed to send verification email: " + err.message);
-                });
+            currentSignupEmail = email; // Store email for OTP verification
+            showStatus("Account created. Sending OTP for email verification...");
+            // Now, request OTP from your backend
+            sendSignupOtp(email);
         })
-        .catch(err => showError("Signup error: " + err.message));
+        .catch(err => {
+            if (err.code === 'auth/email-already-in-use') {
+                showError("This email is already in use. Please log in or use a different email.");
+            } else {
+                showError("Signup error: " + err.message);
+            }
+        });
     }
+
+    // Function to send OTP for email verification
+// Function to send OTP for signup email verification
+    async function sendSignupOtp(email) {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/auth/send-email-otp/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showStatus(data.message);
+                showEmailVerification(email); // Show OTP input
+            } else {
+                showError(data.error || 'Failed to send OTP.');
+                auth.currentUser.delete().catch(e => console.error("Error deleting unverified user:", e)); // Clean up unverified user
+            }
+        } catch (error) {
+            console.error('Error sending signup OTP:', error);
+            showError('Network error or server unavailable while sending OTP.');
+            auth.currentUser.delete().catch(e => console.error("Error deleting unverified user:", e)); // Clean up unverified user
+        }
+    }
+
+    // Function to resend OTP for signup email verification
+    function resendSignupOtp() {
+        if (currentSignupEmail) {
+            showStatus("Resending OTP...");
+            sendSignupOtp(currentSignupEmail);
+        } else {
+            showError("No email set for OTP. Please sign up again.");
+        }
+    }
+
+    // Function to verify OTP for signup email verification
+    async function verifySignupOtp() {
+        const otp = document.getElementById('signupOtp').value;
+        if (!otp) {
+            showError("Please enter the OTP.");
+            return;
+        }
+
+        if (!currentSignupEmail) {
+            showError("No email set for verification. Please sign up again.");
+            return;
+        }
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/auth/verify-email-otp/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: currentSignupEmail, otp: otp }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showStatus(data.message + " You can now log in.");
+                hideEmailVerification(); // Hide OTP input
+                currentSignupEmail = ''; // Clear email after verification
+            } else {
+                showError(data.error || 'OTP verification failed.');
+            }
+        } catch (error) {
+            console.error('Error verifying signup OTP:', error);
+            showError('Network error or server unavailable while verifying OTP.');
+        }
+    }
 
     // ✅ Email Login
     function loginEmail() {
@@ -186,95 +284,81 @@ input, button { margin: 5px; padding: 5px; }
 
     // ✅ Send Password Reset Email
     function sendPasswordResetEmail() {
-        passwordResetEmail = document.getElementById('forgotEmail').value;
-        if (!passwordResetEmail) {
-            showError("Please enter your email to reset password.");
-            return;
-        }
-        if (!isValidEmail(passwordResetEmail)) {
-            showError("Please enter a valid email address.");
-            return;
-        }
+        const email = document.getElementById('forgotEmail').value; // Use local 'email' variable
+        if (!email) {
+            showError("Please enter your email to reset password.");
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showError("Please enter a valid email address.");
+            return;
+        }
 
-        // Firebase password reset link sends an email with an OOB code in the URL
-        auth.sendPasswordResetEmail(passwordResetEmail)
-            .then(() => {
-                showStatus("Password reset email sent to " + passwordResetEmail + ". Please check your inbox.");
-                // For simplicity, we are not implementing OTP validation directly here with Firebase's built-in password reset.
-                // Firebase's `sendPasswordResetEmail` handles the OOB code link directly.
-                // If you *must* have an in-app OTP for password reset, you'd need a backend custom flow
-                // or use a different Firebase method (like `verifyPasswordResetCode` and `confirmPasswordReset`).
-                // For now, we assume the user clicks the link in their email.
-                // We'll hide the OTP and new password sections as the user is expected to go to their email.
-                otpVerificationSection.classList.add('hidden');
-                newPasswordSection.classList.add('hidden');
-            })
-            .catch(err => {
-                showError("Failed to send password reset email: " + err.message);
-            });
-    }
+        auth.sendPasswordResetEmail(email)
+            .then(() => {
+                showStatus("Password reset email sent to " + email + ". Please check your inbox.");
+                newPasswordSection.classList.add('hidden'); // Ensure hidden if re-sending
+            })
+            .catch(err => {
+                showError("Failed to send password reset email: " + err.message);
+            });
+    }
 
     // Function to handle password reset from the email link
     // This is typically handled on a separate page (e.g., reset-password.html)
     // or by checking the URL parameters on page load.
-    function handlePasswordResetUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        const actionCode = urlParams.get('oobCode'); // Firebase Out Of Band code
-        const continueUrl = urlParams.get('continueUrl');
+    // Function to handle password reset from the email link
+    function handlePasswordResetUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const actionCode = urlParams.get('oobCode');
 
-        if (mode === 'resetPassword' && actionCode) {
-            passwordResetOobCode = actionCode;
-            showStatus("Enter your new password below.");
-            forgotPasswordSection.classList.remove('hidden'); // Show forgot password section
-            document.getElementById('forgotEmail').classList.add('hidden'); // Hide email input
-            document.querySelector('#forgotPasswordSection button[onclick="sendPasswordResetEmail()"]').classList.add('hidden'); // Hide send button
-            otpVerificationSection.classList.add('hidden'); // Ensure OTP section is hidden
-            newPasswordSection.classList.remove('hidden'); // Show new password section
-        }
-    }
+        if (mode === 'resetPassword' && actionCode) {
+            passwordResetOobCode = actionCode;
+            showStatus("Enter your new password below.");
+            forgotPasswordSection.classList.remove('hidden');
+            document.getElementById('forgotEmail').classList.add('hidden');
+            document.querySelector('#forgotPasswordSection button[onclick="sendPasswordResetEmail()"]').classList.add('hidden');
+            newPasswordSection.classList.remove('hidden');
+        }
+    }
 
-    // Call this on page load to check for password reset links
-    document.addEventListener('DOMContentLoaded', handlePasswordResetUrl);
+    // This function will be called when the user enters the new password on the same page
+    function resetPassword() {
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmNewPassword').value;
 
-    // This function will be called when the user enters the new password on the same page
-    // after clicking the email reset link.
-    function resetPassword() {
-        const newPass = document.getElementById('newPassword').value;
-        const confirmPass = document.getElementById('confirmNewPassword').value;
+        if (!newPass || !confirmPass) {
+            showError("Please enter and confirm your new password.");
+            return;
+        }
 
-        if (!newPass || !confirmPass) {
-            showError("Please enter and confirm your new password.");
-            return;
-        }
+        if (newPass !== confirmPass) {
+            showError("Passwords do not match.");
+            return;
+        }
 
-        if (newPass !== confirmPass) {
-            showError("Passwords do not match.");
-            return;
-        }
+        if (!isStrongPassword(newPass)) {
+            showError("New password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+            return;
+        }
 
-        if (!isStrongPassword(newPass)) {
-            showError("New password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
-            return;
-        }
+        if (!passwordResetOobCode) {
+            showError("No reset operation in progress. Please use the 'Forgot Password' link again.");
+            return;
+        }
 
-        if (!passwordResetOobCode) {
-            showError("No reset operation in progress. Please use the 'Forgot Password' link again.");
-            return;
-        }
-
-        auth.confirmPasswordReset(passwordResetOobCode, newPass)
-            .then(() => {
-                showStatus("Your password has been changed successfully. You can now log in.");
-                hideForgotPassword(); // Hide the password reset section
-                passwordResetOobCode = ''; // Clear the OOB code
-                // Optionally clear URL parameters
-                history.replaceState({}, document.title, window.location.pathname);
-            })
-            .catch(err => {
-                showError("Error resetting password: " + err.message);
-            });
-    }
+        auth.confirmPasswordReset(passwordResetOobCode, newPass)
+            .then(() => {
+                showStatus("Your password has been changed successfully. You can now log in.");
+                hideForgotPassword();
+                passwordResetOobCode = '';
+                history.replaceState({}, document.title, window.location.pathname);
+            })
+            .catch(err => {
+                showError("Error resetting password: " + err.message);
+            });
+    }
 
     // ✅ LinkedIn Login (initiates the OAuth flow)
     function loginWithLinkedIn() {
