@@ -26,12 +26,13 @@ input, button { margin: 5px; padding: 5px; }
   </div>
 
     <div id="emailVerificationSection" class="hidden">
-        <h3>Verify Your Email</h3>
-        <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
-        <input type="text" id="signupOtp" placeholder="Enter OTP" />
-        <button onclick="verifySignupOtp()">Verify Email OTP</button>
-        <button onclick="resendSignupOtp()">Resend OTP</button>
-    </div>
+    <h3>Verify Your Email</h3>
+    <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
+    <input type="text" id="signupOtp" placeholder="Enter OTP" />
+    <button onclick="verifySignupOtp()">Verify Email OTP</button>
+    <button onclick="resendSignupOtp()">Resend OTP</button>
+    <button onclick="changeEmailAddress()">Change Email</button>
+</div>
 
     <div id="forgotPasswordSection" class="hidden">
         <h3>Forgot Password</h3>
@@ -97,7 +98,14 @@ input, button { margin: 5px; padding: 5px; }
         showStatus('');
         showError('');
     }
-
+    // Function to change email address during signup
+    function changeEmailAddress() {
+    showStatus("Email verification cancelled. Please enter a new email.");
+    hideEmailVerification(); // Hides the OTP section
+    document.getElementById('email').value = ''; // Clear the email input for a new entry
+    document.getElementById('password').value = ''; // Clear password too for a fresh start
+    currentSignupEmail = ''; // Clear the stored email
+}
     function showForgotPassword() {
         forgotPasswordSection.classList.remove('hidden');
         otpVerificationSection.classList.add('hidden');
