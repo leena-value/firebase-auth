@@ -15,6 +15,7 @@
 
   <h2>Firebase Auth Demo</h2>
 
+  <!-- Email Auth Section -->
   <div>
     <h3>Email Signup/Login</h3>
     <input type="email" id="email" placeholder="Email" />
@@ -26,6 +27,7 @@
     <button onclick="showForgotPassword()">Forgot Password?</button>
   </div>
 
+  <!-- Email OTP Verification -->
   <div id="emailVerificationSection" class="hidden">
     <h3>Verify Your Email</h3>
     <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
@@ -35,6 +37,7 @@
     <button onclick="changeEmailAddress()">Change Email</button>
   </div>
 
+  <!-- Forgot Password Section -->
   <div id="forgotPasswordSection" class="hidden">
     <h3>Forgot Password</h3>
     <input type="email" id="forgotEmail" placeholder="Enter your email" />
@@ -54,11 +57,13 @@
     <button onclick="hideForgotPassword()">Cancel</button>
   </div>
 
+  <!-- LinkedIn Auth Section -->
   <div>
     <h3>LinkedIn Signup/Login</h3>
     <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
   </div>
 
+  <!-- Status/Errors -->
   <div id="status"></div>
   <div id="error"></div>
 
@@ -73,47 +78,16 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    window.auth = auth;
-    window.API_BASE_URL = API_BASE_URL;
-
-    window.statusDiv = document.getElementById('status');
-    window.errorDiv = document.getElementById('error');
-    window.emailVerificationSection = document.getElementById('emailVerificationSection');
-    window.verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
-    window.forgotPasswordSection = document.getElementById('forgotPasswordSection');
-    window.otpVerificationSection = document.getElementById('otpVerificationSection');
-    window.newPasswordSection = document.getElementById('newPasswordSection');
-
-    window.signupEmail = signupEmail;
-    window.loginEmail = loginEmail;
-    window.logout = logout;
-    window.resendSignupOtp = resendSignupOtp;
-    window.verifySignupOtp = verifySignupOtp;
-    window.changeEmailAddress = changeEmailAddress;
-    window.showForgotPassword = showForgotPassword;
-    window.hideForgotPassword = hideForgotPassword;
-    window.sendPasswordResetEmail = sendPasswordResetEmail;
-    window.resetPassword = resetPassword;
-    window.loginWithLinkedIn = loginWithLinkedIn;
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
-      const userId = urlParams.get('uid');
-
-      if (linkedinAuthSuccess === 'true' && userId) {
-        showStatus("LinkedIn sign-in successful: " + userId);
-        history.replaceState({}, document.title, window.location.pathname);
-      }
-
-      handlePasswordResetUrl();
-    });
-  </script>
-
-  <!-- App Logic -->
-  <script>
     let currentSignupEmail = '';
     let passwordResetOobCode = '';
+
+    const statusDiv = document.getElementById('status');
+    const errorDiv = document.getElementById('error');
+    const emailVerificationSection = document.getElementById('emailVerificationSection');
+    const verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
+    const forgotPasswordSection = document.getElementById('forgotPasswordSection');
+    const otpVerificationSection = document.getElementById('otpVerificationSection');
+    const newPasswordSection = document.getElementById('newPasswordSection');
 
     function showStatus(msg) {
       statusDiv.textContent = msg;
@@ -203,7 +177,7 @@
 
     async function sendSignupOtp(email) {
       try {
-        const response = await fetch(`${window.API_BASE_URL}/api/auth/send-email-otp/`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/send-email-otp/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
@@ -238,7 +212,7 @@
       if (!currentSignupEmail) return showError("Email not set. Please sign up again.");
 
       try {
-        const response = await fetch(`${window.API_BASE_URL}/api/auth/verify-email-otp/`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/verify-email-otp/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: currentSignupEmail, otp })
@@ -342,6 +316,33 @@
       const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
       window.location.href = url;
     }
+
+    // Register functions for inline onclick
+    window.signupEmail = signupEmail;
+    window.loginEmail = loginEmail;
+    window.logout = logout;
+    window.resendSignupOtp = resendSignupOtp;
+    window.verifySignupOtp = verifySignupOtp;
+    window.changeEmailAddress = changeEmailAddress;
+    window.showForgotPassword = showForgotPassword;
+    window.hideForgotPassword = hideForgotPassword;
+    window.sendPasswordResetEmail = sendPasswordResetEmail;
+    window.resetPassword = resetPassword;
+    window.loginWithLinkedIn = loginWithLinkedIn;
+
+    // Load time logic
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
+      const userId = urlParams.get('uid');
+
+      if (linkedinAuthSuccess === 'true' && userId) {
+        showStatus("LinkedIn sign-in successful: " + userId);
+        history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      handlePasswordResetUrl();
+    });
   </script>
 </body>
 </html>
