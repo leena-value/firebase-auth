@@ -104,14 +104,29 @@
     }
 
     function isStrongPassword(password) {
-      const minLength = 6;
-      const hasUpperCase = /[A-Z]/.test(password);
-      const hasLowerCase = /[a-z]/.test(password);
-      const hasNumber = /[0-9]/.test(password);
-      const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
-      return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
-    }
+  const minLength = 8;
+  const maxLength = 16;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
 
+  const commonPatterns = ["123456", "password", "qwerty", "abc123", "111111"];
+
+  const isCommon = commonPatterns.some(pattern => password.toLowerCase().includes(pattern));
+
+  return (
+    password.length >= minLength &&
+    password.length <= maxLength &&
+    hasUpperCase &&
+    hasLowerCase &&
+    hasNumber &&
+    hasSpecialChar &&
+    !isCommon
+  );
+}
+
+   
     function showEmailVerification(email) {
       emailVerificationSection.classList.remove('hidden');
       verificationEmailDisplay.textContent = email;
