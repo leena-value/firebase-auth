@@ -9,5 +9,4 @@ const firebaseConfig = {
     };
   
 // config.js
-const API_BASE_URL = "https://nxthyre-server-staging-863630644667.asia-south1.run.app/"; // Replace with your endpoint
-export { API_BASE_URL };
+export const API_BASE_URL = "https://nxthyre-server-staging-863630644667.asia-south1.run.app/"; // Replace with your endpoint

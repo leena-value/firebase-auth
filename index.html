@@ -1,407 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Firebase Auth Test</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-input, button { margin: 5px; padding: 5px; }
-#status { color: green; }
-#error { color: red; }
-.hidden { display: none; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Firebase Auth Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, button { margin: 5px; padding: 5px; }
+    #status { color: green; }
+    #error { color: red; }
+    .hidden { display: none; }
+  </style>
 </head>
 <body>
-<h2>Firebase Auth Demo</h2>
 
-    <div>
-    <h3>Email Signup/Login</h3>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <br/>
-    <button onclick="signupEmail()">Sign Up</button>
-    <button onclick="loginEmail()">Log In</button>
-    <button onclick="logout()">Log Out</button>
+  <h2>Firebase Auth Demo</h2>
+
+  <div>
+    <h3>Email Signup/Login</h3>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <br />
+    <button onclick="signupEmail()">Sign Up</button>
+    <button onclick="loginEmail()">Log In</button>
+    <button onclick="logout()">Log Out</button>
     <button onclick="showForgotPassword()">Forgot Password?</button>
-  </div>
+  </div>
 
-    <div id="emailVerificationSection" class="hidden">
+  <div id="emailVerificationSection" class="hidden">
     <h3>Verify Your Email</h3>
     <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
     <input type="text" id="signupOtp" placeholder="Enter OTP" />
     <button onclick="verifySignupOtp()">Verify Email OTP</button>
     <button onclick="resendSignupOtp()">Resend OTP</button>
     <button onclick="changeEmailAddress()">Change Email</button>
-</div>
+  </div>
 
-    <div id="forgotPasswordSection" class="hidden">
-        <h3>Forgot Password</h3>
-        <input type="email" id="forgotEmail" placeholder="Enter your email" />
-        <button onclick="sendPasswordResetEmail()">Send Reset Email</button>
-        <div id="otpVerificationSection" class="hidden">
-            <input type="text" id="forgotOtp" placeholder="Enter OTP" />
-            <button onclick="verifyPasswordResetOtp()">Verify OTP</button>
-        </div>
-        <div id="newPasswordSection" class="hidden">
-            <input type="password" id="newPassword" placeholder="New Password" />
-            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" />
-            <button onclick="resetPassword()">Reset Password</button>
-        </div>
-        <button onclick="hideForgotPassword()">Cancel</button>
+  <div id="forgotPasswordSection" class="hidden">
+    <h3>Forgot Password</h3>
+    <input type="email" id="forgotEmail" placeholder="Enter your email" />
+    <button onclick="sendPasswordResetEmail()">Send Reset Email</button>
+
+    <div id="otpVerificationSection" class="hidden">
+      <input type="text" id="forgotOtp" placeholder="Enter OTP" />
+      <button onclick="verifyPasswordResetOtp()">Verify OTP</button>
     </div>
 
-    <div>
-    <h3>LinkedIn Signup/Login</h3>
-    <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
-  </div>
+    <div id="newPasswordSection" class="hidden">
+      <input type="password" id="newPassword" placeholder="New Password" />
+      <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" />
+      <button onclick="resetPassword()">Reset Password</button>
+    </div>
 
-  <div id="status"></div>
-  <div id="error"></div>
+    <button onclick="hideForgotPassword()">Cancel</button>
+  </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="./firebaseConfig.js"></script>
-<script type="module">
-  import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
-  firebase.initializeApp(firebaseConfig); // Move init here
-  window.API_BASE_URL = API_BASE_URL;     // Make it accessible to other scripts
-</script>
+  <div>
+    <h3>LinkedIn Signup/Login</h3>
+    <button onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
+  </div>
 
-  <script>
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+  <div id="status"></div>
+  <div id="error"></div>
 
-    const statusDiv = document.getElementById('status');
-    const errorDiv = document.getElementById('error');
-    const emailVerificationSection = document.getElementById('emailVerificationSection');
-    const verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
-    const forgotPasswordSection = document.getElementById('forgotPasswordSection');
-    const otpVerificationSection = document.getElementById('otpVerificationSection');
-    const newPasswordSection = document.getElementById('newPasswordSection');
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
+  <!-- App Config & Logic -->
+  <script type="module">
+    import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
 
-    function showStatus(msg) {
-      statusDiv.textContent = msg;
-      errorDiv.textContent = '';
-    }
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    function showError(msg) {
-      errorDiv.textContent = msg;
-      statusDiv.textContent = '';
-    }
+    window.auth = auth;
+    window.API_BASE_URL = API_BASE_URL;
 
-    function showEmailVerification(email) {
-        emailVerificationSection.classList.remove('hidden');
-        verificationEmailDisplay.textContent = email;
-        document.getElementById('signupOtp').value = ''; // Clear previous OTP
-        showStatus('');
-        showError('');
-    }
+    window.statusDiv = document.getElementById('status');
+    window.errorDiv = document.getElementById('error');
+    window.emailVerificationSection = document.getElementById('emailVerificationSection');
+    window.verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
+    window.forgotPasswordSection = document.getElementById('forgotPasswordSection');
+    window.otpVerificationSection = document.getElementById('otpVerificationSection');
+    window.newPasswordSection = document.getElementById('newPasswordSection');
 
-    function hideEmailVerification() {
-        emailVerificationSection.classList.add('hidden');
-        showStatus('');
-        showError('');
-    }
-    // Function to change email address during signup
-    function changeEmailAddress() {
-    showStatus("Email verification cancelled. Please enter a new email.");
-    hideEmailVerification(); // Hides the OTP section
-    document.getElementById('email').value = ''; // Clear the email input for a new entry
-    document.getElementById('password').value = ''; // Clear password too for a fresh start
-    currentSignupEmail = ''; // Clear the stored email
-}
-    function showForgotPassword() {
-        forgotPasswordSection.classList.remove('hidden');
-        otpVerificationSection.classList.add('hidden');
-        newPasswordSection.classList.add('hidden');
-        document.getElementById('forgotEmail').value = '';
-        document.getElementById('forgotOtp').value = '';
-        document.getElementById('newPassword').value = '';
-        document.getElementById('confirmNewPassword').value = '';
-        showStatus('');
-        showError('');
-    }
+    window.signupEmail = signupEmail;
+    window.loginEmail = loginEmail;
+    window.logout = logout;
+    window.resendSignupOtp = resendSignupOtp;
+    window.verifySignupOtp = verifySignupOtp;
+    window.changeEmailAddress = changeEmailAddress;
+    window.showForgotPassword = showForgotPassword;
+    window.hideForgotPassword = hideForgotPassword;
+    window.sendPasswordResetEmail = sendPasswordResetEmail;
+    window.resetPassword = resetPassword;
+    window.loginWithLinkedIn = loginWithLinkedIn;
 
-    function hideForgotPassword() {
-        forgotPasswordSection.classList.add('hidden');
-        showStatus('');
-        showError('');
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
+      const userId = urlParams.get('uid');
 
-    // Password reset state (for OTP and new password)
-    let passwordResetEmail = '';
+      if (linkedinAuthSuccess === 'true' && userId) {
+        showStatus("LinkedIn sign-in successful: " + userId);
+        history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      handlePasswordResetUrl();
+    });
+  </script>
+
+  <!-- App Logic -->
+  <script>
+    let currentSignupEmail = '';
     let passwordResetOobCode = '';
 
-    // ✅ Email Signup
-    function signupEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-
-        if (!email || !pass) {
-            showError("Please enter both email and password for signup.");
-            return;
-        }
-
-        if (!isValidEmail(email)) {
-            showError("Please enter a valid email address.");
-            return;
-        }
-
-        if (!isStrongPassword(pass)) {
-            showError("Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
-            return;
-        }
-
-        auth.createUserWithEmailAndPassword(email, pass)
-        .then(userCredential => {
-            currentSignupEmail = email; // Store email for OTP verification
-            showStatus("Account created. Sending OTP for email verification...");
-            // Now, request OTP from your backend
-            sendSignupOtp(email);
-        })
-        .catch(err => {
-            if (err.code === 'auth/email-already-in-use') {
-                showError("This email is already in use. Please log in or use a different email.");
-            } else {
-                showError("Signup error: " + err.message);
-            }
-        });
-    }
-
-    // Function to send OTP for email verification
-// Function to send OTP for signup email verification
-    async function sendSignupOtp(email) {
-        try {
-            const response = await fetch(`${window.API_BASE_URL}/api/auth/send-email-otp/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: email }),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showStatus(data.message);
-                showEmailVerification(email); // Show OTP input
-            } else {
-                showError(data.error || 'Failed to send OTP.');
-                auth.currentUser.delete().catch(e => console.error("Error deleting unverified user:", e)); // Clean up unverified user
-            }
-        } catch (error) {
-            console.error('Error sending signup OTP:', error);
-            showError('Network error or server unavailable while sending OTP.');
-            auth.currentUser.delete().catch(e => console.error("Error deleting unverified user:", e)); // Clean up unverified user
-        }
+    function showStatus(msg) {
+      statusDiv.textContent = msg;
+      errorDiv.textContent = '';
     }
 
-    // Function to resend OTP for signup email verification
-    function resendSignupOtp() {
-        if (currentSignupEmail) {
-            showStatus("Resending OTP...");
-            sendSignupOtp(currentSignupEmail);
-        } else {
-            showError("No email set for OTP. Please sign up again.");
-        }
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      statusDiv.textContent = '';
     }
 
-    // Function to verify OTP for signup email verification
-    async function verifySignupOtp() {
-        const otp = document.getElementById('signupOtp').value;
-        if (!otp) {
-            showError("Please enter the OTP.");
-            return;
-        }
-
-        if (!currentSignupEmail) {
-            showError("No email set for verification. Please sign up again.");
-            return;
-        }
-
-        try {
-            const response = await fetch(`${window.API_BASE_URL}/api/auth/verify-email-otp/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: currentSignupEmail, otp: otp }),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showStatus(data.message + " You can now log in.");
-                hideEmailVerification(); // Hide OTP input
-                currentSignupEmail = ''; // Clear email after verification
-            } else {
-                showError(data.error || 'OTP verification failed.');
-            }
-        } catch (error) {
-            console.error('Error verifying signup OTP:', error);
-            showError('Network error or server unavailable while verifying OTP.');
-        }
-    }
-
-    // ✅ Email Login
-    function loginEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-
-        if (!email || !pass) {
-            showError("Please enter both email and password for login.");
-            return;
-        }
-
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(userCredential => {
-            const user = userCredential.user;
-            if (user.emailVerified) {
-                showStatus("Login successful: " + user.uid);
-            } else {
-                showError("Please verify your email address to log in. A verification email has been sent.");
-                user.sendEmailVerification(); // Resend if not verified
-                auth.signOut(); // Log out the unverified user
-            }
-        })
-        .catch(err => {
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                showError("Invalid email or password.");
-            } else {
-                showError("Login error: " + err.message);
-            }
-        });
-    }
-
-    // Email and Password Validation functions
     function isValidEmail(email) {
-        // Simple regex for email validation
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
     function isStrongPassword(password) {
-        // At least 6 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character
-        const minLength = 6;
-        const hasUpperCase = /[A-Z]/.test(password);
-        const hasLowerCase = /[a-z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
-        return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+      const minLength = 6;
+      const hasUpperCase = /[A-Z]/.test(password);
+      const hasLowerCase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
+      return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
     }
 
-    // ✅ Logout
-    function logout() {
-      auth.signOut()
-        .then(() => showStatus("Logged out"))
-        .catch(err => showError("Logout error: " + err.message));
-    }
+    function showEmailVerification(email) {
+      emailVerificationSection.classList.remove('hidden');
+      verificationEmailDisplay.textContent = email;
+      document.getElementById('signupOtp').value = '';
+      showStatus('');
+      showError('');
+    }
 
-    // ✅ Send Password Reset Email
+    function hideEmailVerification() {
+      emailVerificationSection.classList.add('hidden');
+      showStatus('');
+      showError('');
+    }
+
+    function changeEmailAddress() {
+      showStatus("Email verification cancelled. Please enter a new email.");
+      hideEmailVerification();
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+      currentSignupEmail = '';
+    }
+
+    function showForgotPassword() {
+      forgotPasswordSection.classList.remove('hidden');
+      otpVerificationSection.classList.add('hidden');
+      newPasswordSection.classList.add('hidden');
+      document.getElementById('forgotEmail').value = '';
+      document.getElementById('forgotOtp').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmNewPassword').value = '';
+      showStatus('');
+      showError('');
+    }
+
+    function hideForgotPassword() {
+      forgotPasswordSection.classList.add('hidden');
+      showStatus('');
+      showError('');
+    }
+
+    function signupEmail() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+
+      if (!email || !pass) return showError("Please enter both email and password.");
+      if (!isValidEmail(email)) return showError("Invalid email format.");
+      if (!isStrongPassword(pass)) return showError("Password not strong enough.");
+
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => {
+          currentSignupEmail = email;
+          showStatus("Account created. Sending OTP...");
+          sendSignupOtp(email);
+        })
+        .catch(err => {
+          if (err.code === 'auth/email-already-in-use') {
+            showError("Email already in use.");
+          } else {
+            showError("Signup error: " + err.message);
+          }
+        });
+    }
+
+    async function sendSignupOtp(email) {
+      try {
+        const response = await fetch(`${window.API_BASE_URL}/api/auth/send-email-otp/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          showStatus(data.message);
+          showEmailVerification(email);
+        } else {
+          showError(data.error || 'Failed to send OTP.');
+          auth.currentUser.delete().catch(() => {});
+        }
+      } catch {
+        showError('Network/server error while sending OTP.');
+        auth.currentUser.delete().catch(() => {});
+      }
+    }
+
+    function resendSignupOtp() {
+      if (currentSignupEmail) {
+        showStatus("Resending OTP...");
+        sendSignupOtp(currentSignupEmail);
+      } else {
+        showError("No email available. Please sign up again.");
+      }
+    }
+
+    async function verifySignupOtp() {
+      const otp = document.getElementById('signupOtp').value;
+      if (!otp) return showError("Please enter the OTP.");
+      if (!currentSignupEmail) return showError("Email not set. Please sign up again.");
+
+      try {
+        const response = await fetch(`${window.API_BASE_URL}/api/auth/verify-email-otp/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentSignupEmail, otp })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          showStatus(data.message + " You can now log in.");
+          hideEmailVerification();
+          currentSignupEmail = '';
+        } else {
+          showError(data.error || 'OTP verification failed.');
+        }
+      } catch {
+        showError('Error verifying OTP.');
+      }
+    }
+
+    function loginEmail() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+
+      if (!email || !pass) return showError("Please enter both email and password.");
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(userCredential => {
+          const user = userCredential.user;
+          if (user.emailVerified) {
+            showStatus("Login successful: " + user.uid);
+          } else {
+            showError("Verify your email before logging in.");
+            user.sendEmailVerification();
+            auth.signOut();
+          }
+        })
+        .catch(err => {
+          if (['auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
+            showError("Invalid email or password.");
+          } else {
+            showError("Login error: " + err.message);
+          }
+        });
+    }
+
+    function logout() {
+      auth.signOut()
+        .then(() => showStatus("Logged out"))
+        .catch(err => showError("Logout error: " + err.message));
+    }
+
     function sendPasswordResetEmail() {
-        const email = document.getElementById('forgotEmail').value; // Use local 'email' variable
-        if (!email) {
-            showError("Please enter your email to reset password.");
-            return;
-        }
-        if (!isValidEmail(email)) {
-            showError("Please enter a valid email address.");
-            return;
-        }
+      const email = document.getElementById('forgotEmail').value;
+      if (!email) return showError("Please enter your email.");
+      if (!isValidEmail(email)) return showError("Invalid email.");
 
-        auth.sendPasswordResetEmail(email)
-            .then(() => {
-                showStatus("Password reset email sent to " + email + ". Please check your inbox.");
-                newPasswordSection.classList.add('hidden'); // Ensure hidden if re-sending
-            })
-            .catch(err => {
-                showError("Failed to send password reset email: " + err.message);
-            });
-    }
+      auth.sendPasswordResetEmail(email)
+        .then(() => showStatus("Password reset email sent to " + email))
+        .catch(err => showError("Error: " + err.message));
+    }
 
-    // Function to handle password reset from the email link
-    // This is typically handled on a separate page (e.g., reset-password.html)
-    // or by checking the URL parameters on page load.
-    // Function to handle password reset from the email link
-    function handlePasswordResetUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        const actionCode = urlParams.get('oobCode');
+    function handlePasswordResetUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const mode = urlParams.get('mode');
+      const actionCode = urlParams.get('oobCode');
 
-        if (mode === 'resetPassword' && actionCode) {
-            passwordResetOobCode = actionCode;
-            showStatus("Enter your new password below.");
-            forgotPasswordSection.classList.remove('hidden');
-            document.getElementById('forgotEmail').classList.add('hidden');
-            document.querySelector('#forgotPasswordSection button[onclick="sendPasswordResetEmail()"]').classList.add('hidden');
-            newPasswordSection.classList.remove('hidden');
-        }
-    }
+      if (mode === 'resetPassword' && actionCode) {
+        passwordResetOobCode = actionCode;
+        showStatus("Enter your new password below.");
+        forgotPasswordSection.classList.remove('hidden');
+        document.getElementById('forgotEmail').classList.add('hidden');
+        document.querySelector('#forgotPasswordSection button[onclick="sendPasswordResetEmail()"]').classList.add('hidden');
+        newPasswordSection.classList.remove('hidden');
+      }
+    }
 
-    // This function will be called when the user enters the new password on the same page
-    function resetPassword() {
-        const newPass = document.getElementById('newPassword').value;
-        const confirmPass = document.getElementById('confirmNewPassword').value;
+    function resetPassword() {
+      const newPass = document.getElementById('newPassword').value;
+      const confirmPass = document.getElementById('confirmNewPassword').value;
 
-        if (!newPass || !confirmPass) {
-            showError("Please enter and confirm your new password.");
-            return;
-        }
+      if (!newPass || !confirmPass) return showError("Please fill both password fields.");
+      if (newPass !== confirmPass) return showError("Passwords do not match.");
+      if (!isStrongPassword(newPass)) return showError("Weak password.");
 
-        if (newPass !== confirmPass) {
-            showError("Passwords do not match.");
-            return;
-        }
+      auth.confirmPasswordReset(passwordResetOobCode, newPass)
+        .then(() => {
+          showStatus("Password changed successfully.");
+          hideForgotPassword();
+          passwordResetOobCode = '';
+          history.replaceState({}, document.title, window.location.pathname);
+        })
+        .catch(err => showError("Error: " + err.message));
+    }
 
-        if (!isStrongPassword(newPass)) {
-            showError("New password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
-            return;
-        }
+    function loginWithLinkedIn() {
+      const clientId = '86crgnew3xgywt';
+      const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html';
+      const state = Math.random().toString(36).substring(2);
+      const scope = 'openid profile email';
 
-        if (!passwordResetOobCode) {
-            showError("No reset operation in progress. Please use the 'Forgot Password' link again.");
-            return;
-        }
-
-        auth.confirmPasswordReset(passwordResetOobCode, newPass)
-            .then(() => {
-                showStatus("Your password has been changed successfully. You can now log in.");
-                hideForgotPassword();
-                passwordResetOobCode = '';
-                history.replaceState({}, document.title, window.location.pathname);
-            })
-            .catch(err => {
-                showError("Error resetting password: " + err.message);
-            });
-    }
-
-    // ✅ LinkedIn Login (initiates the OAuth flow)
-    function loginWithLinkedIn() {
-        const clientId = '86crgnew3xgywt'; // Replace with your actual Client ID
-        const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // Ensure this matches your LinkedIn App settings
-        const state = Math.random().toString(36).substring(2);
-        const scope = 'openid profile email'; // Ensure 'email' scope is requested for fetching email
-
-        sessionStorage.setItem('linkedin_oauth_state', state);
-        console.log('index.html: Stored state in sessionStorage:', state); // DEBUG LOG
-
-        const linkedInAuthURL = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
-        window.location.href = linkedInAuthURL;
-    }
-
-    // --- IMPORTANT NEW CODE FOR LINKEDIN SUCCESS MESSAGE ---
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
-        const userId = urlParams.get('uid');
-
-        if (linkedinAuthSuccess === 'true' && userId) {
-            showStatus("LinkedIn sign-in successful: " + userId);
-            // Optionally, remove the query parameters from the URL for a cleaner look
-            history.replaceState({}, document.title, window.location.pathname);
-        }
-        // Check for password reset on page load
-        handlePasswordResetUrl();
-    });
-  </script>
+      sessionStorage.setItem('linkedin_oauth_state', state);
+      const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
+      window.location.href = url;
+    }
+  </script>
 </body>
 </html>
