@@ -61,6 +61,12 @@ input, button { margin: 5px; padding: 5px; }
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="./firebaseConfig.js"></script>
+<script type="module">
+  import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
+  firebase.initializeApp(firebaseConfig); // Move init here
+  window.API_BASE_URL = API_BASE_URL;     // Make it accessible to other scripts
+</script>
+
   <script>
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -168,7 +174,7 @@ input, button { margin: 5px; padding: 5px; }
 // Function to send OTP for signup email verification
     async function sendSignupOtp(email) {
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/auth/send-email-otp/', {
+            const response = await fetch(`${window.API_BASE_URL}/api/auth/send-email-otp/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -215,7 +221,7 @@ input, button { margin: 5px; padding: 5px; }
         }
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/auth/verify-email-otp/', {
+            const response = await fetch(`${window.API_BASE_URL}/api/auth/verify-email-otp/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
