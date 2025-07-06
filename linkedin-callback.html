@@ -25,15 +25,17 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="firebaseConfig.js"></script>
-  <script type="module">
+  <!-- <script type="module">
   import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
   firebase.initializeApp(firebaseConfig); // Move init here
   window.API_BASE_URL = API_BASE_URL;     // Make it accessible to other scripts
-</script>
+</script> -->
 
-  <script>
+  <script  type="module">
     // Initialize Firebase (make sure firebaseConfig is defined in firebaseConfig.js)
-    firebase.initializeApp(firebaseConfig);
+    import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
+  firebase.initializeApp(firebaseConfig); // Move init here
+  window.API_BASE_URL = API_BASE_URL;   
     const auth = firebase.auth();
 
     const statusDiv = document.getElementById('status');
