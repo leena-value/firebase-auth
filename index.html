@@ -37,6 +37,13 @@
     <button onclick="changeEmailAddress()">Change Email</button>
   </div>
 
+  <div id="companyEmailSection" class="hidden">
+    <h3>Company Email Required</h3>
+    <p id="companyEmailMessage"></p>
+    <input type="email" id="companyEmailInput" placeholder="Enter your work email" />
+    <button onclick="updateCompanyEmail()">Submit and Verify</button>
+  </div>
+
   <!-- Forgot Password Section -->
   <div id="forgotPasswordSection" class="hidden">
     <h3>Forgot Password</h3>
@@ -88,6 +95,8 @@
     const forgotPasswordSection = document.getElementById('forgotPasswordSection');
     const otpVerificationSection = document.getElementById('otpVerificationSection');
     const newPasswordSection = document.getElementById('newPasswordSection');
+    const companyEmailSection = document.getElementById('companyEmailSection');
+    const companyEmailMessage = document.getElementById('companyEmailMessage');
 
     function showStatus(msg) {
       statusDiv.textContent = msg;
@@ -98,6 +107,16 @@
       errorDiv.textContent = msg;
       statusDiv.textContent = '';
     }
+
+    function showCompanyEmailPrompt(message) {
+    companyEmailSection.classList.remove('hidden');
+    companyEmailMessage.textContent = message;
+    hideEmailVerification(); // Hide other prompts
+}
+
+function hideCompanyEmailPrompt() {
+    companyEmailSection.classList.add('hidden');
+}
 
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -173,7 +192,7 @@
 
       if (!email || !pass) return showError("Please enter both email and password.");
       if (!isValidEmail(email)) return showError("Invalid email format.");
-      if (!isStrongPassword(pass)) return showError("Password not strong enough.");
+      if (!isStrongPassword(pass)) return showError("Please enter correct password format.");
 
       auth.createUserWithEmailAndPassword(email, pass)
         .then(() => {
@@ -222,29 +241,40 @@
     }
 
     async function verifySignupOtp() {
-      const otp = document.getElementById('signupOtp').value;
-      if (!otp) return showError("Please enter the OTP.");
-      if (!currentSignupEmail) return showError("Email not set. Please sign up again.");
+    const otp = document.getElementById('signupOtp').value;
+    if (!otp) return showError("Please enter the OTP.");
+    if (!currentSignupEmail) return showError("Email not set. Please sign up again.");
 
-      try {
+    try {
         const response = await fetch(`${API_BASE_URL}/api/auth/verify-email-otp/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: currentSignupEmail, otp })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentSignupEmail, otp })
         });
 
         const data = await response.json();
         if (response.ok) {
-          showStatus(data.message + " You can now log in.");
-          hideEmailVerification();
-          currentSignupEmail = '';
+            // --- NEW LOGIC ---
+            if (data.status === 'company_email_required') {
+                // The backend requires a company email. Prompt the user.
+                showStatus(data.message); // Show the informational message
+                // The user is not fully logged in yet, but we need to sign them in to proceed
+                // to the "update email" step. First, prompt for login.
+                showError("Please log in with your original credentials to provide a company email.");
+                hideEmailVerification();
+            } else {
+                // Success! User has a company domain or is joining an org.
+                showStatus(data.message + " You can now log in.");
+                hideEmailVerification();
+            }
+            currentSignupEmail = ''; // Clear the email
         } else {
-          showError(data.error || 'OTP verification failed.');
+            showError(data.error || 'OTP verification failed.');
         }
-      } catch {
+    } catch {
         showError('Error verifying OTP.');
-      }
     }
+}
 
     function loginEmail() {
       const email = document.getElementById('email').value;
@@ -332,6 +362,45 @@
       window.location.href = url;
     }
 
+    async function updateCompanyEmail() {
+    const newEmail = document.getElementById('companyEmailInput').value;
+    if (!isValidEmail(newEmail)) {
+        return showError("Please enter a valid email address.");
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+        return showError("You are not logged in. Please log in first.");
+    }
+
+    showStatus("Updating email and checking organization...");
+    try {
+        const idToken = await user.getIdToken(true); // Get fresh token for backend auth
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/update-company-email/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}` // Send token for authentication
+            },
+            body: JSON.stringify({ email: newEmail })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            showStatus(data.message);
+            hideCompanyEmailPrompt();
+            // The backend sent a new OTP. Show the verification screen again, for the new email.
+            currentSignupEmail = newEmail;
+            showEmailVerification(newEmail);
+        } else {
+            showError(data.error || "Failed to update email.");
+        }
+    } catch (error) {
+        showError("An error occurred: " + error.message);
+    }
+}
+
     // Register functions for inline onclick
     window.signupEmail = signupEmail;
     window.loginEmail = loginEmail;
@@ -344,20 +413,31 @@
     window.sendPasswordResetEmail = sendPasswordResetEmail;
     window.resetPassword = resetPassword;
     window.loginWithLinkedIn = loginWithLinkedIn;
+    window.updateCompanyEmail = updateCompanyEmail;
 
     // Load time logic
     window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const linkedinAuthSuccess = urlParams.get('linkedin_auth_success');
-      const userId = urlParams.get('uid');
+    // Check for state from linkedin-callback
+    const nextAction = sessionStorage.getItem('next_action');
+    if (nextAction === 'prompt_company_email') {
+        const message = sessionStorage.getItem('prompt_message');
+        showCompanyEmailPrompt(message);
+        // Clean up session storage so it doesn't trigger again
+        sessionStorage.removeItem('next_action');
+        sessionStorage.removeItem('prompt_message');
+    }
 
-      if (linkedinAuthSuccess === 'true' && userId) {
+    // This part remains the same
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('linkedin_auth_success') === 'true' && !nextAction) {
+        const userId = sessionStorage.getItem('firebase_uid');
         showStatus("LinkedIn sign-in successful: " + userId);
         history.replaceState({}, document.title, window.location.pathname);
-      }
-
-      handlePasswordResetUrl();
-    });
+        sessionStorage.removeItem('firebase_uid');
+    }
+    
+    handlePasswordResetUrl();
+});
   </script>
 </body>
 </html>
