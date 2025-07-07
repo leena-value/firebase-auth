@@ -291,58 +291,90 @@
         }
     }
 
-    async function handleSuccessfulAuth() {
-        showStatus("Authentication successful. Checking your onboarding status...");
-        document.querySelector('div:has(> #email)').classList.add('hidden');
-        document.querySelector('div:has(> #loginWithLinkedInBtn)').classList.add('hidden');
-        hideEmailVerification();
-        hideCompanyEmailPrompt();
-        try {
-            const user = auth.currentUser;
-            if (!user) return showError("Not logged in. Cannot check status.");
-            const idToken = await user.getIdToken(true);
-            console.log("Checking onboarding status for user:", user.uid);
-
-            console.log("this is token", idToken);
-            const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
-
-                headers: { 'Authorization': `Bearer ${idToken}` }
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to get onboarding status.');
-            
-            onboardingSection.classList.remove('hidden');
-            createOrgSection.classList.add('hidden');
-            joinOrgSection.classList.add('hidden');
-            createWorkspaceSection.classList.add('hidden');
-            
-            switch (data.status) {
-                case 'ONBOARDED':
-                    showStatus(`Welcome back! You are onboarded to ${data.organization.name}. Redirecting to dashboard...`);
-                    // window.location.href = '/dashboard';
-                    break;
-                case 'NEEDS_ORGANIZATION':
-                    showStatus("Let's get you set up with an organization.");
-                    createOrgSection.classList.remove('hidden');
-                    document.getElementById('orgDomain').textContent = data.domain || 'your company';
-                    break;
-                case 'ORGANIZATION_EXISTS':
-                    showStatus(`Your company, ${data.organization_name}, is already on the platform.`);
-                    joinOrgSection.classList.remove('hidden');
-                    document.getElementById('joinOrgName').textContent = data.organization_name;
-                    const list = document.getElementById('workspacesList');
-                    list.innerHTML = data.workspaces.length ? '' : '<p>No workspaces available to join. Contact an admin.</p>';
-                    data.workspaces.forEach(ws => {
-                        list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status || 'Not Requested'}</i> <button>Request to Join</button></p>`;
-                    });
-                    break;
-                default:
-                    showError("Received an unknown onboarding status.");
-            }
-        } catch (err) {
-            showError("Error checking onboarding status: " + err.message);
+   // ...existing code...
+async function handleSuccessfulAuth() {
+    console.log("handleSuccessfulAuth: called");
+    showStatus("Authentication successful. Checking your onboarding status...");
+    console.log("handleSuccessfulAuth: showStatus called");
+    document.querySelector('div:has(> #email)').classList.add('hidden');
+    console.log("handleSuccessfulAuth: email div hidden");
+    document.querySelector('div:has(> #loginWithLinkedInBtn)').classList.add('hidden');
+    console.log("handleSuccessfulAuth: LinkedIn button div hidden");
+    hideEmailVerification();
+    console.log("handleSuccessfulAuth: hideEmailVerification called");
+    hideCompanyEmailPrompt();
+    console.log("handleSuccessfulAuth: hideCompanyEmailPrompt called");
+    try {
+        const user = auth.currentUser;
+        console.log("handleSuccessfulAuth: got currentUser", user);
+        if (!user) {
+            console.log("handleSuccessfulAuth: user not found");
+            return showError("Not logged in. Cannot check status.");
         }
+        const idToken = await user.getIdToken(true);
+        console.log("handleSuccessfulAuth: got idToken", idToken);
+        console.log("Checking onboarding status for user:", user.uid);
+
+        console.log("this is token", idToken);
+        const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
+            headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+        console.log("handleSuccessfulAuth: fetched onboarding-status", response);
+        const data = await response.json();
+        console.log("handleSuccessfulAuth: onboarding-status response data", data);
+        if (!response.ok) {
+            console.log("handleSuccessfulAuth: response not ok");
+            throw new Error(data.error || 'Failed to get onboarding status.');
+        }
+        
+        onboardingSection.classList.remove('hidden');
+        console.log("handleSuccessfulAuth: onboardingSection shown");
+        createOrgSection.classList.add('hidden');
+        console.log("handleSuccessfulAuth: createOrgSection hidden");
+        joinOrgSection.classList.add('hidden');
+        console.log("handleSuccessfulAuth: joinOrgSection hidden");
+        createWorkspaceSection.classList.add('hidden');
+        console.log("handleSuccessfulAuth: createWorkspaceSection hidden");
+        
+        switch (data.status) {
+            case 'ONBOARDED':
+                console.log("handleSuccessfulAuth: status ONBOARDED");
+                showStatus(`Welcome back! You are onboarded to ${data.organization.name}. Redirecting to dashboard...`);
+                // window.location.href = '/dashboard';
+                break;
+            case 'NEEDS_ORGANIZATION':
+                console.log("handleSuccessfulAuth: status NEEDS_ORGANIZATION");
+                showStatus("Let's get you set up with an organization.");
+                createOrgSection.classList.remove('hidden');
+                console.log("handleSuccessfulAuth: createOrgSection shown");
+                document.getElementById('orgDomain').textContent = data.domain || 'your company';
+                console.log("handleSuccessfulAuth: orgDomain set");
+                break;
+            case 'ORGANIZATION_EXISTS':
+                console.log("handleSuccessfulAuth: status ORGANIZATION_EXISTS");
+                showStatus(`Your company, ${data.organization_name}, is already on the platform.`);
+                joinOrgSection.classList.remove('hidden');
+                console.log("handleSuccessfulAuth: joinOrgSection shown");
+                document.getElementById('joinOrgName').textContent = data.organization_name;
+                console.log("handleSuccessfulAuth: joinOrgName set");
+                const list = document.getElementById('workspacesList');
+                list.innerHTML = data.workspaces.length ? '' : '<p>No workspaces available to join. Contact an admin.</p>';
+                console.log("handleSuccessfulAuth: workspacesList cleared or message set");
+                data.workspaces.forEach(ws => {
+                    list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status || 'Not Requested'}</i> <button>Request to Join</button></p>`;
+                    console.log("handleSuccessfulAuth: workspace listed", ws);
+                });
+                break;
+            default:
+                console.log("handleSuccessfulAuth: unknown status", data.status);
+                showError("Received an unknown onboarding status.");
+        }
+    } catch (err) {
+        console.log("handleSuccessfulAuth: error", err);
+        showError("Error checking onboarding status: " + err.message);
     }
+}
+// ...existing
 
     function loginEmail() {
       const email = document.getElementById('email').value;
