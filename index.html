@@ -301,7 +301,7 @@
             const user = auth.currentUser;
             if (!user) return showError("Not logged in. Cannot check status.");
             const idToken = await user.getIdToken(true);
-            const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
+            const response = await fetch(`${API_BASE_URL}/`, {
                 headers: { 'Authorization': `Bearer ${idToken}` }
             });
             const data = await response.json();
