@@ -84,11 +84,14 @@
             console.log('linkedin-callback.html: Backend response status:', response.status);
             if (!response.ok) {
               return response.json().then(errorData => {
+                console.log('linkedin-callback.html: Backend error data:', errorData);
                 throw new Error(errorData.error || 'Unknown backend error');
               }).catch(() => {
+                console.log('linkedin-callback.html: Backend response was not JSON:', response);
                 throw new Error('Backend returned error, but not in JSON format');
               });
             }
+            console.log('linkedin-callback.html: Backend response is OK, parsing JSON...', response.json);
             return response.json();
           })
           .then(data => {
