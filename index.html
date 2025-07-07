@@ -319,7 +319,7 @@ async function handleSuccessfulAuth() {
         const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
             headers: { 'Authorization': `Bearer ${idToken}` }
         });
-        console.log("handleSuccessfulAuth: fetched onboarding-status", response);
+        console.log("handleSuccessfulAuth: fetched onboarding-status", response.body);
         const data = await response.json();
         console.log("handleSuccessfulAuth: onboarding-status response data", data);
         if (!response.ok) {
