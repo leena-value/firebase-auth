@@ -386,6 +386,36 @@ async function handleSuccessfulAuth() {
         showError("Error checking onboarding status: " + err.message);
     }
 }
+
+async function createOrganization() {
+    const orgName = document.getElementById('orgNameInput').value.trim();
+    if (!orgName) return showError("Please enter an organization name.");
+    const user = auth.currentUser;
+    if (!user) return showError("You are not logged in.");
+
+    showStatus("Creating organization...");
+    try {
+        const idToken = await user.getIdToken(true);
+        const response = await fetch(`${API_BASE_URL}/api/organization/create/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ name: orgName })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            showStatus(data.message || "Organization created! Proceeding...");
+            createOrgSection.classList.add('hidden');
+            createWorkspaceSection.classList.remove('hidden');
+        } else {
+            showError(data.error || "Failed to create organization.");
+        }
+    } catch (err) {
+        showError("Network or server error.");
+    }
+}
 // ...existing
 
     function loginEmail() {
@@ -546,6 +576,7 @@ async function handleSuccessfulAuth() {
     window.sendPasswordResetEmail = sendPasswordResetOtp;
     window.verifyPasswordResetOtp = verifyPasswordResetOtp;
     window.resetPassword = resetPassword;
+    window.createOrganization = createOrganization;
 
     // --- CLEANED UP LOAD TIME LOGIC ---
     window.addEventListener('DOMContentLoaded', () => {
