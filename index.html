@@ -95,14 +95,15 @@
           <p>Your company is already on our platform. Select a workspace to request to join:</p>
           <div id="workspacesList"></div>
       </div>
-      
-      <!-- State: Needs to create a workspace -->
-      <div id="createWorkspaceSection" class="hidden">
-          <h3>Create Your First Workspace</h3>
-          <p>Your organization has been created. Now, create a workspace to get started.</p>
+
+       <div id="createWorkspaceSection" class="hidden">
+          <!-- The H3 tag now has an ID so we can easily change its text -->
+          <h3 id="createWorkspaceHeading">Create Your First Workspace</h3>
+          <p id="createWorkspaceMessage">Your organization has been created. Now, create a workspace to get started.</p>
           <input type="text" id="workspaceNameInput" placeholder="Workspace Name">
           <button onclick="createWorkspace()">Create Workspace and Finish Onboarding</button>
       </div>
+      
   </div>
 
   <!-- Status/Errors -->
@@ -401,7 +402,6 @@
                     break;
                 case 'NEEDS_COMPANY_EMAIL':
                     showStatus(data.message);
-                    // This function already exists in your UI helpers, now we use it!
                     showCompanyEmailPrompt(data.message);
                     break;
                 case 'NEEDS_ORGANIZATION':
@@ -409,14 +409,19 @@
                     createOrgSection.classList.remove('hidden');
                     document.getElementById('orgDomain').textContent = data.domain || 'your company';
                     break;
+                
+                // --- THIS IS THE MODIFIED LOGIC FOR YOUR REQUEST ---
                 case 'ORGANIZATION_EXISTS':
                     const org = data.organization;
                     showStatus(`Your company, ${org.name}, is already on the platform.`);
+                    
+                    // 1. Show the section for joining
                     joinOrgSection.classList.remove('hidden');
                     document.getElementById('joinOrgName').textContent = org.name;
 
+                    // 2. Populate the list of workspaces to join
                     const list = document.getElementById('workspacesList');
-                    list.innerHTML = data.workspaces.length ? '' : '<p>No workspaces available to join. Contact an admin.</p>';
+                    list.innerHTML = data.workspaces.length ? '' : '<p>No existing workspaces found. You can create the first one below.</p>';
                     
                     data.workspaces.forEach(ws => {
                         let buttonHtml;
@@ -429,7 +434,20 @@
                         }
                         list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status}</i> ${buttonHtml}</p>`;
                     });
+
+                    // 3. Set the current organization ID so the "Create Workspace" button works correctly
+                    currentOrganizationId = org.id;
+
+                    // 4. ALSO show the section to create a new workspace
+                    createWorkspaceSection.classList.remove('hidden');
+
+                    // 5. Update the text to be more appropriate for this context
+                    document.getElementById('createWorkspaceHeading').textContent = 'Or Create a New Workspace';
+                    document.getElementById('createWorkspaceMessage').textContent = 'Add a new workspace to your organization.';
+                    
                     break;
+                // --- END OF MODIFIED LOGIC ---
+
                 default:
                     showError("Received an unknown onboarding status.");
             }
