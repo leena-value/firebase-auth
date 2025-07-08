@@ -399,6 +399,11 @@
                     showStatus(`Welcome back! You are onboarded to ${data.organization.name}.`);
                     onboardingSection.innerHTML = `<h2>Onboarding Complete</h2><p>Welcome to ${data.organization.name}!</p>`;
                     break;
+                case 'NEEDS_COMPANY_EMAIL':
+                    showStatus(data.message);
+                    // This function already exists in your UI helpers, now we use it!
+                    showCompanyEmailPrompt(data.message);
+                    break;
                 case 'NEEDS_ORGANIZATION':
                     showStatus("Let's get you set up with an organization.");
                     createOrgSection.classList.remove('hidden');
@@ -515,6 +520,42 @@
         } catch (err) { console.error(err); showError("Network or server error."); }
     }
 
+    async function updateCompanyEmail() {
+    const newEmail = document.getElementById('companyEmailInput').value;
+    if (!isValidEmail(newEmail)) return showError("Please enter a valid work email.");
+
+    const user = auth.currentUser;
+    if (!user) return showError("You are not logged in.");
+
+    showStatus("Updating your email...");
+    try {
+        const idToken = await user.getIdToken(true);
+        const response = await fetch(`${API_BASE_URL}/api/auth/update-company-email/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ email: newEmail })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            // Success! The backend sent an OTP to the new email.
+            showStatus(data.message);
+            // Hide the company email prompt and show the normal email verification prompt.
+            // We need to set the `currentSignupEmail` to the *new* email for verification.
+            currentSignupEmail = newEmail;
+            hideCompanyEmailPrompt();
+            showEmailVerification(newEmail);
+        } else {
+            showError(data.error || "Failed to update email.");
+        }
+    } catch (err) {
+        console.error(err);
+        showError("Network or server error while updating email.");
+    }
+}
+
     // --- GLOBAL FUNCTION REGISTRATION & INITIAL LOAD ---
     // Make functions accessible to HTML onclick attributes
     window.signupEmail = signupEmail;
@@ -532,6 +573,7 @@
     window.createOrganization = createOrganization;
     window.createWorkspace = createWorkspace;
     window.requestToJoin = requestToJoin;
+    window.updateCompanyEmail = updateCompanyEmail;
 
     // Listen for auth state changes to automatically handle login/logout
     auth.onAuthStateChanged(user => {
