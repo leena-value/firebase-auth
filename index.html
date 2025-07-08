@@ -363,17 +363,18 @@ async function handleSuccessfulAuth() {
                 break;
             case 'ORGANIZATION_EXISTS':
                 console.log("handleSuccessfulAuth: status ORGANIZATION_EXISTS");
-                showStatus(`Your company, ${data.organization_name}, is already on the platform.`);
+                // ### FIXED: Access the name from the nested organization object ###
+                showStatus(`Your company, ${data.organization.name}, is already on the platform.`);
                 joinOrgSection.classList.remove('hidden');
-                console.log("handleSuccessfulAuth: joinOrgSection shown");
-                document.getElementById('joinOrgName').textContent = data.organization_name;
-                console.log("handleSuccessfulAuth: joinOrgName set");
+                // ### FIXED: Access the name from the nested organization object ###
+                document.getElementById('joinOrgName').textContent = data.organization.name;
+                
                 const list = document.getElementById('workspacesList');
                 list.innerHTML = data.workspaces.length ? '' : '<p>No workspaces available to join. Contact an admin.</p>';
-                console.log("handleSuccessfulAuth: workspacesList cleared or message set");
+                
                 data.workspaces.forEach(ws => {
+                    // This part was already correct and needs no changes
                     list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status || 'Not Requested'}</i> <button>Request to Join</button></p>`;
-                    console.log("handleSuccessfulAuth: workspace listed", ws);
                 });
                 break;
             default:
