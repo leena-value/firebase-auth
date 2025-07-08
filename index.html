@@ -350,7 +350,7 @@ async function handleSuccessfulAuth() {
         switch (data.status) {
             case 'ONBOARDED':
                 console.log("handleSuccessfulAuth: status ONBOARDED");
-                showStatus(`Welcome back! You are onboarded to ${data.organization.name}. Redirecting to dashboard...`);
+                showStatus(`Welcome back! You are onboarded to ${data.organization.organization_name}. Redirecting to dashboard...`);
                 // window.location.href = '/dashboard';
                 break;
             case 'NEEDS_ORGANIZATION':
