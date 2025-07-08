@@ -380,7 +380,8 @@
 
             const idToken = await user.getIdToken(true);
             console.log("[handleSuccessfulAuth] User is authenticated. Fetching onboarding status from backend.");
-            
+
+            console.log('this is token', idToken);
             const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
                 headers: { 'Authorization': `Bearer ${idToken}` }
             });
