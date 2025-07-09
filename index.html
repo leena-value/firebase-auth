@@ -283,8 +283,8 @@
     }
 
     function loginWithLinkedIn() {
-      const clientId = 'YOUR_LINKEDIN_CLIENT_ID'; // <-- IMPORTANT: REPLACE WITH YOUR ACTUAL CLIENT ID
-      const redirectUri = 'YOUR_LINKEDIN_REDIRECT_URI'; // <-- e.g., 'https://your-domain.com/linkedin-callback.html'
+      const clientId = '86crgnew3xgywt'; // <-- IMPORTANT: REPLACE WITH YOUR ACTUAL CLIENT ID
+      const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // <-- e.g., 'https://your-domain.com/linkedin-callback.html'
       const state = Math.random().toString(36).substring(2);
       sessionStorage.setItem('linkedin_oauth_state', state);
       const scope = 'openid profile email';
