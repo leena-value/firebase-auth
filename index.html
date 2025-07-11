@@ -4,19 +4,23 @@
   <meta charset="UTF-8" />
   <title>Firebase Auth Test</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    input, button { margin: 5px; padding: 5px; }
-    #status { color: green; }
-    #error { color: red; }
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    input, button { margin: 5px; padding: 8px; font-size: 14px; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; background-color: #ccc; }
+    h2, h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px;}
+    #status { color: green; font-weight: bold; }
+    #error { color: red; font-weight: bold; }
     .hidden { display: none; }
+    .section-container { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
   </style>
 </head>
 <body>
 
-  <h2>Firebase Auth Demo</h2>
+  <h1>Recruiter Platform Demo</h1>
 
   <!-- Email Auth Section -->
-  <div>
+  <div id="loginSection" class="section-container">
     <h3>Email Signup/Login</h3>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />
@@ -28,16 +32,17 @@
   </div>
 
   <!-- Email OTP Verification -->
-  <div id="emailVerificationSection" class="hidden">
+  <div id="emailVerificationSection" class="section-container hidden">
     <h3>Verify Your Email</h3>
     <p>An OTP has been sent to <span id="verificationEmailDisplay"></span>.</p>
     <input type="text" id="signupOtp" placeholder="Enter OTP" />
     <button onclick="verifySignupOtp()">Verify Email OTP</button>
     <button onclick="resendSignupOtp()">Resend OTP</button>
-    <button onclick="changeEmailAddress()">Change Email</button>
+    <button onclick="changeEmailAddress()">Cancel & Change Email</button>
   </div>
 
-  <div id="companyEmailSection" class="hidden">
+  <!-- Company Email Prompt -->
+  <div id="companyEmailSection" class="section-container hidden">
     <h3>Company Email Required</h3>
     <p id="companyEmailMessage"></p>
     <input type="email" id="companyEmailInput" placeholder="Enter your work email" />
@@ -45,59 +50,61 @@
   </div>
 
   <!-- Forgot Password Section -->
-  <div id="forgotPasswordSection" class="hidden">
+  <div id="forgotPasswordSection" class="section-container hidden">
     <h3>Forgot Password</h3>
     <input type="email" id="forgotEmail" placeholder="Enter your email" />
-    <button onclick="sendPasswordResetEmail()">Send Reset Email</button>
+    <button onclick="sendPasswordResetOtp()">Send Reset OTP</button>
 
-    <div id="otpVerificationSection" class="hidden">
+    <div id="forgotOtpVerificationSection" class="hidden">
+      <p>An OTP has been sent to your email.</p>
       <input type="text" id="forgotOtp" placeholder="Enter OTP" />
       <button onclick="verifyPasswordResetOtp()">Verify OTP</button>
     </div>
 
     <div id="newPasswordSection" class="hidden">
+      <p>OTP verified. Please enter your new password.</p>
       <input type="password" id="newPassword" placeholder="New Password" />
       <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" />
       <button onclick="resetPassword()">Reset Password</button>
     </div>
-
+    <br>
     <button onclick="hideForgotPassword()">Cancel</button>
   </div>
 
-  <div>
+  <!-- LinkedIn Auth Section -->
+  <div id="linkedinLoginSection" class="section-container">
     <h3>LinkedIn Signup/Login</h3>
-    <!-- ADD THE ID HERE -->
     <button id="loginWithLinkedInBtn" onclick="loginWithLinkedIn()">Sign in with LinkedIn</button>
-</div>
+  </div>
 
   <!-- Onboarding UI Sections -->
-  <div id="onboardingSection" class="hidden">
-      <hr>
+  <div id="onboardingSection" class="section-container hidden">
       <h2>Onboarding</h2>
 
       <!-- State: Needs to create an organization -->
       <div id="createOrgSection" class="hidden">
           <h3>Create Your Organization</h3>
-          <p>We couldn't find an organization for your domain (<span id="orgDomain"></span>). Let's create one!</p>
+          <p>We couldn't find an organization for your domain (<strong><span id="orgDomain"></span></strong>). Let's create one!</p>
           <input type="text" id="orgNameInput" placeholder="Organization Name">
           <button onclick="createOrganization()">Create Organization</button>
       </div>
 
       <!-- State: Needs to join an existing organization -->
       <div id="joinOrgSection" class="hidden">
-          <h3>Join <span id="joinOrgName"></span></h3>
-          <p>Select a workspace to join:</p>
+          <h3>Join <strong><span id="joinOrgName"></span></strong></h3>
+          <p>Your company is already on our platform. Select a workspace to request to join:</p>
           <div id="workspacesList"></div>
       </div>
-      
-      <!-- State: Needs to create a workspace -->
-      <div id="createWorkspaceSection" class="hidden">
-          <h3>Create Your First Workspace</h3>
-          <input type="text" id="workspaceNameInput" placeholder="Workspace Name">
-          <button onclick="createWorkspace()">Create Workspace</button>
-      </div>
-  </div>
 
+       <div id="createWorkspaceSection" class="hidden">
+          <!-- The H3 tag now has an ID so we can easily change its text -->
+          <h3 id="createWorkspaceHeading">Create Your First Workspace</h3>
+          <p id="createWorkspaceMessage">Your organization has been created. Now, create a workspace to get started.</p>
+          <input type="text" id="workspaceNameInput" placeholder="Workspace Name">
+          <button onclick="createWorkspace()">Create Workspace and Finish Onboarding</button>
+      </div>
+      
+  </div>
 
   <!-- Status/Errors -->
   <div id="status"></div>
@@ -107,24 +114,28 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
-    <script type="module">
+  <script type="module">
     import { firebaseConfig, API_BASE_URL } from './firebaseConfig.js';
 
+    // --- INITIALIZATION ---
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    console.log("Firebase Initialized.");
 
-    // Cleaned up global variables
+    // --- GLOBAL STATE VARIABLES ---
     let currentSignupEmail = '';
     let forgotPasswordEmail = '';
+    let currentOrganizationId = null;
 
-    // DOM Element variables are correct
+    // --- DOM ELEMENT REFERENCES ---
     const statusDiv = document.getElementById('status');
     const errorDiv = document.getElementById('error');
+    const loginSection = document.getElementById('loginSection');
+    const linkedinLoginSection = document.getElementById('linkedinLoginSection');
     const emailVerificationSection = document.getElementById('emailVerificationSection');
     const verificationEmailDisplay = document.getElementById('verificationEmailDisplay');
     const forgotPasswordSection = document.getElementById('forgotPasswordSection');
-    // Note: The child div for OTP needs its own ID for clarity
-    const forgotOtpVerificationSection = forgotPasswordSection.querySelector('#otpVerificationSection');
+    const forgotOtpVerificationSection = document.getElementById('forgotOtpVerificationSection');
     const newPasswordSection = document.getElementById('newPasswordSection');
     const companyEmailSection = document.getElementById('companyEmailSection');
     const companyEmailMessage = document.getElementById('companyEmailMessage');
@@ -133,329 +144,162 @@
     const joinOrgSection = document.getElementById('joinOrgSection');
     const createWorkspaceSection = document.getElementById('createWorkspaceSection');
 
-    // --- All helper and primary functions ---
-    // (These are all correct as you wrote them)
+    // --- UI HELPER FUNCTIONS ---
+    function showStatus(msg) { statusDiv.textContent = msg; errorDiv.textContent = ''; }
+    function showError(msg) { errorDiv.textContent = msg; statusDiv.textContent = ''; }
+    function showEmailVerification(email) { emailVerificationSection.classList.remove('hidden'); verificationEmailDisplay.textContent = email; }
+    function hideEmailVerification() { emailVerificationSection.classList.add('hidden'); }
+    function showForgotPassword() { forgotPasswordSection.classList.remove('hidden'); }
+    function hideForgotPassword() { forgotPasswordSection.classList.add('hidden'); }
+    function showCompanyEmailPrompt(message) { companyEmailSection.classList.remove('hidden'); companyEmailMessage.textContent = message; hideEmailVerification(); }
+    function hideCompanyEmailPrompt() { companyEmailSection.classList.add('hidden'); }
+    function changeEmailAddress() { showStatus("Email verification cancelled. Please enter a new email."); hideEmailVerification(); document.getElementById('email').value = ''; document.getElementById('password').value = ''; currentSignupEmail = ''; }
 
-    function showStatus(msg) {
-      statusDiv.textContent = msg;
-      errorDiv.textContent = '';
-    }
+    // --- VALIDATION HELPERS ---
+    function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+    function isStrongPassword(password) { return password.length >= 8; /* Basic check for demo */ }
+    
+    // --- AUTHENTICATION FLOWS ---
 
-    function showError(msg) {
-      errorDiv.textContent = msg;
-      statusDiv.textContent = '';
-    }
+    /**
+     * CRITICAL: Handles email sign-up by calling OUR backend.
+     * The backend creates the user in Firebase and Django, then sends the OTP.
+     */
+    async function signupEmail() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
 
-    function showCompanyEmailPrompt(message) {
-        companyEmailSection.classList.remove('hidden');
-        companyEmailMessage.textContent = message;
-        hideEmailVerification();
-    }
+        if (!isValidEmail(email)) return showError("Invalid email format.");
+        if (!isStrongPassword(pass)) return showError("Password must be at least 8 characters.");
 
-    function hideCompanyEmailPrompt() {
-        companyEmailSection.classList.add('hidden');
-    }
+        showStatus("Creating your account...");
+        console.log(`[signupEmail] Attempting to sign up with email: ${email}`);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/signup/email/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: pass })
+            });
+            const data = await response.json();
+            console.log('[signupEmail] Backend response:', data);
 
-    function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    function isStrongPassword(password) {
-        const minLength = 8;
-        const maxLength = 16;
-        const hasUpperCase = /[A-Z]/.test(password);
-        const hasLowerCase = /[a-z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(password);
-        const commonPatterns = ["123456", "password", "qwerty", "abc123", "111111"];
-        const isCommon = commonPatterns.some(pattern => password.toLowerCase().includes(pattern));
-        return (
-            password.length >= minLength &&
-            password.length <= maxLength &&
-            hasUpperCase && hasLowerCase &&
-            hasNumber && hasSpecialChar && !isCommon
-        );
-    }
-   
-    function showEmailVerification(email) {
-      emailVerificationSection.classList.remove('hidden');
-      verificationEmailDisplay.textContent = email;
-      document.getElementById('signupOtp').value = '';
-      showStatus('');
-      showError('');
-    }
-
-    function hideEmailVerification() {
-      emailVerificationSection.classList.add('hidden');
-      showStatus('');
-      showError('');
-    }
-
-    function changeEmailAddress() {
-      showStatus("Email verification cancelled. Please enter a new email.");
-      hideEmailVerification();
-      document.getElementById('email').value = '';
-      document.getElementById('password').value = '';
-      currentSignupEmail = '';
-    }
-
-    function showForgotPassword() {
-      forgotPasswordSection.classList.remove('hidden');
-      forgotOtpVerificationSection.classList.add('hidden');
-      newPasswordSection.classList.add('hidden');
-      document.getElementById('forgotEmail').value = '';
-      document.getElementById('forgotOtp').value = '';
-      document.getElementById('newPassword').value = '';
-      document.getElementById('confirmNewPassword').value = '';
-      showStatus('');
-      showError('');
-    }
-
-    function hideForgotPassword() {
-      forgotPasswordSection.classList.add('hidden');
-      showStatus('');
-      showError('');
-    }
-
-    function signupEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      if (!email || !pass) return showError("Please enter both email and password.");
-      if (!isValidEmail(email)) return showError("Invalid email format.");
-      if (!isStrongPassword(pass)) return showError("Password does not meet complexity requirements.");
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(() => {
-          currentSignupEmail = email;
-          showStatus("Account created. Sending OTP...");
-          sendSignupOtp(email);
-        })
-        .catch(err => {
-          if (err.code === 'auth/email-already-in-use') {
-            showError("Email already in use.");
-          } else {
-            showError("Signup error: " + err.message);
-          }
-        });
-    }
-
-    async function sendSignupOtp(email) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/send-email-otp/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const data = await response.json();
-        if (response.ok) {
-          showStatus(data.message);
-          showEmailVerification(email);
-        } else {
-          showError(data.error || 'Failed to send OTP.');
-          auth.currentUser?.delete().catch(() => {});
+            if (response.ok) {
+                currentSignupEmail = email; // Store email for the OTP verification step
+                showStatus(data.message);
+                showEmailVerification(email);
+            } else {
+                showError(data.error || 'An unknown error occurred during sign-up.');
+            }
+        } catch (err) {
+            showError('Network or server error during sign-up.');
+            console.error('[signupEmail] Fetch error:', err);
         }
-      } catch {
-        showError('Network/server error while sending OTP.');
-        auth.currentUser?.delete().catch(() => {});
-      }
     }
 
-    function resendSignupOtp() {
-      if (currentSignupEmail) {
-        showStatus("Resending OTP...");
-        sendSignupOtp(currentSignupEmail);
-      } else {
-        showError("No email available. Please sign up again.");
-      }
-    }
-
+    /**
+     * Verifies the OTP sent during sign-up.
+     */
     async function verifySignupOtp() {
         const otp = document.getElementById('signupOtp').value;
         if (!otp) return showError("Please enter the OTP.");
         if (!currentSignupEmail) return showError("Email not set. Please sign up again.");
+
+        console.log(`[verifySignupOtp] Verifying OTP for ${currentSignupEmail}`);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/verify-email-otp/`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/otp/verify/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentSignupEmail, otp })
+                body: JSON.stringify({ email: currentSignupEmail, otp: otp })
+            });
+            const data = await response.json();
+            console.log('[verifySignupOtp] Backend response:', data);
+
+            if (response.ok) {
+                showStatus(data.message + " You can now log in.");
+                hideEmailVerification();
+                currentSignupEmail = '';
+            } else {
+                showError(data.error || 'OTP verification failed.');
+            }
+        } catch(err) {
+            showError('Error verifying OTP.');
+            console.error('[verifySignupOtp] Fetch error:', err);
+        }
+    }
+
+    /**
+     * Resends the OTP for the current sign-up email.
+     */
+    async function resendSignupOtp() {
+        if (!currentSignupEmail) return showError("No email to resend OTP to. Please start over.");
+        
+        showStatus("Resending OTP...");
+        console.log(`[resendSignupOtp] Resending OTP to ${currentSignupEmail}`);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/otp/send/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentSignupEmail })
             });
             const data = await response.json();
             if (response.ok) {
                 showStatus(data.message);
-                hideEmailVerification();
-                currentSignupEmail = ''; 
             } else {
-                showError(data.error || 'OTP verification failed.');
+                showError(data.error || 'Failed to resend OTP.');
             }
-        } catch {
-            showError('Error verifying OTP.');
+        } catch(err) {
+            showError('Network/server error while resending OTP.');
+            console.error('[resendSignupOtp] Fetch error:', err);
         }
     }
 
-   // ...existing code...
-async function handleSuccessfulAuth() {
-    console.log("handleSuccessfulAuth: called");
-    showStatus("Authentication successful. Checking your onboarding status...");
-    console.log("handleSuccessfulAuth: showStatus called");
-    document.querySelector('div:has(> #email)').classList.add('hidden');
-    console.log("handleSuccessfulAuth: email div hidden");
-    document.querySelector('div:has(> #loginWithLinkedInBtn)').classList.add('hidden');
-    console.log("handleSuccessfulAuth: LinkedIn button div hidden");
-    hideEmailVerification();
-    console.log("handleSuccessfulAuth: hideEmailVerification called");
-    hideCompanyEmailPrompt();
-    console.log("handleSuccessfulAuth: hideCompanyEmailPrompt called");
-    try {
-        const user = auth.currentUser;
-        console.log("handleSuccessfulAuth: got currentUser", user);
-        if (!user) {
-            console.log("handleSuccessfulAuth: user not found");
-            return showError("Not logged in. Cannot check status.");
-        }
-        const idToken = await user.getIdToken(true);
-        console.log("handleSuccessfulAuth: got idToken", idToken);
-        console.log("Checking onboarding status for user:", user.uid);
-
-        console.log("this is token", idToken);
-                const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
-            headers: { 'Authorization': `Bearer ${idToken}` }
-        });
-        console.log("handleSuccessfulAuth: fetched onboarding-status", typeof(response));
-        // Read the body ONCE and store it
-        const rawBody = await response.clone().text();
-        console.log("handleSuccessfulAuth: raw response body", rawBody);
-        let data;
-        try {
-            data = JSON.parse(rawBody);
-        } catch (e) {
-            console.log("handleSuccessfulAuth: failed to parse JSON", e);
-            data = {};
-        }
-        // You can still use response.json() ON THE CLONE if you want object directly:
-        // const data = await response.clone().json();
-
-        if (!response.ok) {
-            console.log("handleSuccessfulAuth: response not ok");
-            throw new Error(data.error || 'Failed to get onboarding status.');
-        }
-        
-        onboardingSection.classList.remove('hidden');
-        console.log("handleSuccessfulAuth: onboardingSection shown");
-        createOrgSection.classList.add('hidden');
-        console.log("handleSuccessfulAuth: createOrgSection hidden");
-        joinOrgSection.classList.add('hidden');
-        console.log("handleSuccessfulAuth: joinOrgSection hidden");
-        createWorkspaceSection.classList.add('hidden');
-        console.log("handleSuccessfulAuth: createWorkspaceSection hidden");
-        
-        switch (data.status) {
-            case 'ONBOARDED':
-                console.log("handleSuccessfulAuth: status ONBOARDED");
-                showStatus(`Welcome back! You are onboarded to ${data.organization_name}. Redirecting to dashboard...`);
-                // window.location.href = '/dashboard';
-                break;
-            case 'NEEDS_ORGANIZATION':
-                console.log("handleSuccessfulAuth: status NEEDS_ORGANIZATION");
-                showStatus("Let's get you set up with an organization.");
-                createOrgSection.classList.remove('hidden');
-                console.log("handleSuccessfulAuth: createOrgSection shown");
-                document.getElementById('orgDomain').textContent = data.domain || 'your company';
-                console.log("handleSuccessfulAuth: orgDomain set");
-                break;
-            case 'ORGANIZATION_EXISTS':
-                console.log("handleSuccessfulAuth: status ORGANIZATION_EXISTS");
-                // ### FIXED: Access the name from the nested organization object ###
-                showStatus(`Your company, ${data.organization_name}, is already on the platform.`);
-                joinOrgSection.classList.remove('hidden');
-                // ### FIXED: Access the name from the nested organization object ###
-                document.getElementById('joinOrgName').textContent = data.organization_name;
-
-                const list = document.getElementById('workspacesList');
-                list.innerHTML = data.workspaces.length ? '' : '<p>No workspaces available to join. Contact an admin.</p>';
-                
-                data.workspaces.forEach(ws => {
-                    // This part was already correct and needs no changes
-                    list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status || 'Not Requested'}</i> <button>Request to Join</button></p>`;
-                });
-                break;
-            default:
-                console.log("handleSuccessfulAuth: unknown status", data.status);
-                showError("Received an unknown onboarding status.");
-        }
-    } catch (err) {
-        console.log("handleSuccessfulAuth: error", err);
-        showError("Error checking onboarding status: " + err.message);
-    }
-}
-
-async function createOrganization() {
-    const orgName = document.getElementById('orgNameInput').value.trim();
-    if (!orgName) return showError("Please enter an organization name.");
-    const user = auth.currentUser;
-    if (!user) return showError("You are not logged in.");
-
-    showStatus("Creating organization...");
-    try {
-        const idToken = await user.getIdToken(true);
-        const response = await fetch(`${API_BASE_URL}/api/organization/create/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
-            },
-            body: JSON.stringify({ name: orgName })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            showStatus(data.message || "Organization created! Proceeding...");
-            createOrgSection.classList.add('hidden');
-            createWorkspaceSection.classList.remove('hidden');
-        } else {
-            showError(data.error || "Failed to create organization.");
-        }
-    } catch (err) {
-        showError("Network or server error.");
-    }
-}
-// ...existing
-
+    /**
+     * Logs in a user via the Firebase SDK.
+     */
     function loginEmail() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      if (!email || !pass) return showError("Please enter both email and password.");
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(userCredential => {
-          const user = userCredential.user;
-          // IMPORTANT: Firebase automatically checks verification status
-          // The emailVerified property might not be instantly updated after our OTP check.
-          // We will trust our backend and proceed directly to the router.
-          handleSuccessfulAuth();
-        })
-        .catch(err => {
-          if (['auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
-            showError("Invalid email or password.");
-          } else {
-            showError("Login error: " + err.message);
-          }
-        });
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        if (!isValidEmail(email) || !pass) return showError("Please enter a valid email and password.");
+
+        console.log(`[loginEmail] Attempting to log in user: ${email}`);
+        auth.signInWithEmailAndPassword(email, pass)
+            .then(userCredential => {
+                console.log('[loginEmail] Firebase login successful. User:', userCredential.user.uid);
+                // After Firebase login, call our backend to get full user status.
+                handleSuccessfulAuth();
+            })
+            .catch(err => {
+                showError("Invalid email or password.");
+                console.error('[loginEmail] Firebase login error:', err);
+            });
     }
 
     function logout() {
-      auth.signOut()
-        .then(() => {
-            showStatus("Logged out");
-            // Here you would typically reload the page or show the login forms again
+        auth.signOut().then(() => {
+            console.log('[logout] User signed out.');
             window.location.reload();
-        })
-        .catch(err => showError("Logout error: " + err.message));
+        });
     }
 
-    // --- NEW OTP-BASED PASSWORD RESET FUNCTIONS ---
+    function loginWithLinkedIn() {
+      const clientId = '86crgnew3xgywt'; // <-- IMPORTANT: REPLACE WITH YOUR ACTUAL CLIENT ID
+      const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html'; // <-- e.g., 'https://your-domain.com/linkedin-callback.html'
+      const state = Math.random().toString(36).substring(2);
+      sessionStorage.setItem('linkedin_oauth_state', state);
+      const scope = 'openid profile email';
+      const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
+      console.log('[loginWithLinkedIn] Redirecting to LinkedIn for authorization.');
+      window.location.href = url;
+    }
+
+    // --- PASSWORD RESET FLOW ---
     async function sendPasswordResetOtp() {
         const email = document.getElementById('forgotEmail').value;
-        if (!email) return showError("Please enter your email.");
         if (!isValidEmail(email)) return showError("Invalid email.");
+        console.log(`[sendPasswordResetOtp] Sending reset OTP to ${email}`);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/send-password-reset-otp/`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/send-otp/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
@@ -468,16 +312,15 @@ async function createOrganization() {
             } else {
                 showError(data.error || "Failed to send OTP.");
             }
-        } catch {
-            showError("Network error.");
-        }
+        } catch(err) { console.error(err); showError("Network error."); }
     }
 
     async function verifyPasswordResetOtp() {
         const otp = document.getElementById('forgotOtp').value;
         if (!otp) return showError("Please enter OTP.");
+        console.log(`[verifyPasswordResetOtp] Verifying reset OTP for ${forgotPasswordEmail}`);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/verify-password-reset-otp/`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/verify-otp/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: forgotPasswordEmail, otp })
@@ -490,20 +333,18 @@ async function createOrganization() {
             } else {
                 showError(data.error || "Invalid OTP.");
             }
-        } catch {
-            showError("Network error.");
-        }
+        } catch(err) { console.error(err); showError("Network error."); }
     }
 
     async function resetPassword() {
         const newPass = document.getElementById('newPassword').value;
         const confirmPass = document.getElementById('confirmNewPassword').value;
         const otp = document.getElementById('forgotOtp').value;
-        if (!newPass || !confirmPass) return showError("Please fill both password fields.");
         if (newPass !== confirmPass) return showError("Passwords do not match.");
         if (!isStrongPassword(newPass)) return showError("Weak password.");
+        console.log(`[resetPassword] Attempting to reset password for ${forgotPasswordEmail}`);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/reset-password-with-otp/`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/confirm/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: forgotPasswordEmail, otp, password: newPass })
@@ -516,52 +357,227 @@ async function createOrganization() {
             } else {
                 showError(data.error || "Failed to reset password.");
             }
-        } catch {
-            showError("Network error.");
+        } catch(err) { console.error(err); showError("Network error."); }
+    }
+
+
+    // --- ONBOARDING & POST-LOGIN LOGIC ---
+    
+    /**
+     * This is the main "router" function after a user is authenticated.
+     * It fetches the user's complete status from our backend and shows the correct UI.
+     */
+    async function handleSuccessfulAuth() {
+        showStatus("Authentication successful. Checking onboarding status...");
+        loginSection.classList.add('hidden');
+        linkedinLoginSection.classList.add('hidden');
+        hideEmailVerification();
+        hideCompanyEmailPrompt();
+        
+        try {
+            const user = auth.currentUser;
+            if (!user) return showError("Not logged in. Cannot check status.");
+
+            const idToken = await user.getIdToken(true);
+            console.log("[handleSuccessfulAuth] User is authenticated. Fetching onboarding status from backend.");
+           
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Simulate network delay
+            console.log('this is token', idToken);
+            const response = await fetch(`${API_BASE_URL}/api/organization/onboarding-status/`, {
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            const data = await response.json();
+            console.log('[handleSuccessfulAuth] Onboarding status response:', data);
+
+            if (!response.ok) throw new Error(data.error || 'Failed to get onboarding status.');
+            
+            // Show the main onboarding container and hide all sub-sections initially
+            onboardingSection.classList.remove('hidden');
+            createOrgSection.classList.add('hidden');
+            joinOrgSection.classList.add('hidden');
+            createWorkspaceSection.classList.add('hidden');
+            
+            switch (data.status) {
+                case 'ONBOARDED':
+                    showStatus(`Welcome back! You are onboarded to ${data.organization.name}.`);
+                    onboardingSection.innerHTML = `<h2>Onboarding Complete</h2><p>Welcome to ${data.organization.name}!</p>`;
+                    break;
+                case 'NEEDS_COMPANY_EMAIL':
+                    showStatus(data.message);
+                    showCompanyEmailPrompt(data.message);
+                    break;
+                case 'NEEDS_ORGANIZATION':
+                    showStatus("Let's get you set up with an organization.");
+                    createOrgSection.classList.remove('hidden');
+                    document.getElementById('orgDomain').textContent = data.domain || 'your company';
+                    break;
+                
+                // --- THIS IS THE MODIFIED LOGIC FOR YOUR REQUEST ---
+                case 'ORGANIZATION_EXISTS':
+                    const org = data.organization;
+                    showStatus(`Your company, ${org.name}, is already on the platform.`);
+                    
+                    // 1. Show the section for joining
+                    joinOrgSection.classList.remove('hidden');
+                    document.getElementById('joinOrgName').textContent = org.name;
+
+                    // 2. Populate the list of workspaces to join
+                    const list = document.getElementById('workspacesList');
+                    list.innerHTML = data.workspaces.length ? '' : '<p>No existing workspaces found. You can create the first one below.</p>';
+                    
+                    data.workspaces.forEach(ws => {
+                        let buttonHtml;
+                        if (ws.join_status === 'PENDING') {
+                            buttonHtml = `<button disabled>Request Pending</button>`;
+                        } else if (ws.join_status === 'APPROVED') {
+                            buttonHtml = `<button disabled>Joined</button>`;
+                        } else {
+                            buttonHtml = `<button onclick="requestToJoin(${ws.id})">Request to Join</button>`;
+                        }
+                        list.innerHTML += `<p>${ws.name} - <i>Status: ${ws.join_status}</i> ${buttonHtml}</p>`;
+                    });
+
+                    // 3. Set the current organization ID so the "Create Workspace" button works correctly
+                    currentOrganizationId = org.id;
+
+                    // 4. ALSO show the section to create a new workspace
+                    createWorkspaceSection.classList.remove('hidden');
+
+                    // 5. Update the text to be more appropriate for this context
+                    document.getElementById('createWorkspaceHeading').textContent = 'Or Create a New Workspace';
+                    document.getElementById('createWorkspaceMessage').textContent = 'Add a new workspace to your organization.';
+                    
+                    break;
+                // --- END OF MODIFIED LOGIC ---
+
+                default:
+                    showError("Received an unknown onboarding status.");
+            }
+        } catch (err) {
+            showError("Error checking onboarding status: " + err.message);
+            console.error("[handleSuccessfulAuth] Error:", err);
         }
     }
 
-    function loginWithLinkedIn() {
-      const clientId = '86crgnew3xgywt';
-      const redirectUri = 'https://leena-value.github.io/firebase-auth/linkedin-callback.html';
-      const state = Math.random().toString(36).substring(2);
-      const scope = 'openid profile email';
-      sessionStorage.setItem('linkedin_oauth_state', state);
-      const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
-      window.location.href = url;
-    }
-
-    async function updateCompanyEmail() {
-        const newEmail = document.getElementById('companyEmailInput').value;
-        if (!isValidEmail(newEmail)) return showError("Please enter a valid email address.");
+    async function createOrganization() {
+        const orgName = document.getElementById('orgNameInput').value.trim();
+        if (!orgName) return showError("Please enter an organization name.");
+        
         const user = auth.currentUser;
-        if (!user) return showError("You are not logged in. Please log in first.");
-        showStatus("Updating email and checking organization...");
+        if (!user) return showError("You are not logged in.");
+
+        showStatus("Creating organization...");
+        console.log(`[createOrganization] Creating org with name: ${orgName}`);
         try {
             const idToken = await user.getIdToken(true);
-            const response = await fetch(`${API_BASE_URL}/api/auth/update-company-email/`, {
+            const response = await fetch(`${API_BASE_URL}/api/organization/create/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ email: newEmail })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                body: JSON.stringify({ name: orgName })
             });
             const data = await response.json();
             if (response.ok) {
                 showStatus(data.message);
-                hideCompanyEmailPrompt();
-                currentSignupEmail = newEmail;
-                showEmailVerification(newEmail);
+                currentOrganizationId = data.id; // Store the new org ID
+                console.log(`[createOrganization] Org created with ID: ${currentOrganizationId}`);
+                createOrgSection.classList.add('hidden');
+                createWorkspaceSection.classList.remove('hidden');
             } else {
-                showError(data.error || "Failed to update email.");
+                showError(data.error || "Failed to create organization.");
             }
-        } catch (error) {
-            showError("An error occurred: " + error.message);
-        }
+        } catch (err) { console.error(err); showError("Network or server error."); }
     }
 
-    // --- CLEANED UP GLOBAL REGISTRATIONS ---
+    async function createWorkspace() {
+        const workspaceName = document.getElementById('workspaceNameInput').value.trim();
+        if (!workspaceName) return showError("Please enter a workspace name.");
+        if (!currentOrganizationId) return showError("Organization ID not found. An error occurred.");
+
+        const user = auth.currentUser;
+        if (!user) return showError("You are not logged in.");
+
+        showStatus("Creating workspace...");
+        console.log(`[createWorkspace] Creating workspace '${workspaceName}' in org ID ${currentOrganizationId}`);
+        try {
+            const idToken = await user.getIdToken(true);
+            const response = await fetch(`${API_BASE_URL}/api/organization/${currentOrganizationId}/workspaces/create/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                body: JSON.stringify({ name: workspaceName })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showStatus("Onboarding complete! Redirecting to dashboard...");
+                console.log("[createWorkspace] Onboarding finished successfully.");
+                onboardingSection.innerHTML = `<h2>Onboarding Complete</h2><p>Welcome to ${data.name}!</p>`;
+            } else {
+                showError(data.error || "Failed to create workspace.");
+            }
+        } catch (err) { console.error(err); showError("Network or server error."); }
+    }
+    
+    async function requestToJoin(workspaceId) {
+        if (!workspaceId) return;
+        const user = auth.currentUser;
+        if (!user) return showError("You are not logged in.");
+
+        showStatus("Sending join request...");
+        console.log(`[requestToJoin] Sending request for workspace ID: ${workspaceId}`);
+        try {
+            const idToken = await user.getIdToken(true);
+            const response = await fetch(`${API_BASE_URL}/api/organization/workspaces/${workspaceId}/join-request/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showStatus("Join request sent successfully! An admin will review it.");
+                // Refresh the onboarding status to show the 'PENDING' state
+                handleSuccessfulAuth();
+            } else {
+                showError(data.error || "Failed to send join request.");
+            }
+        } catch (err) { console.error(err); showError("Network or server error."); }
+    }
+
+    async function updateCompanyEmail() {
+    const newEmail = document.getElementById('companyEmailInput').value;
+    if (!isValidEmail(newEmail)) return showError("Please enter a valid work email.");
+
+    const user = auth.currentUser;
+    if (!user) return showError("You are not logged in.");
+
+    showStatus("Updating your email...");
+    try {
+        const idToken = await user.getIdToken(true);
+        const response = await fetch(`${API_BASE_URL}/api/auth/update-company-email/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ email: newEmail })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            // Success! The backend sent an OTP to the new email.
+            showStatus(data.message);
+            // Hide the company email prompt and show the normal email verification prompt.
+            // We need to set the `currentSignupEmail` to the *new* email for verification.
+            currentSignupEmail = newEmail;
+            hideCompanyEmailPrompt();
+            showEmailVerification(newEmail);
+        } else {
+            showError(data.error || "Failed to update email.");
+        }
+    } catch (err) {
+        console.error(err);
+        showError("Network or server error while updating email.");
+    }
+}
+
+    // --- GLOBAL FUNCTION REGISTRATION & INITIAL LOAD ---
+    // Make functions accessible to HTML onclick attributes
     window.signupEmail = signupEmail;
     window.loginEmail = loginEmail;
     window.logout = logout;
@@ -571,31 +587,28 @@ async function createOrganization() {
     window.showForgotPassword = showForgotPassword;
     window.hideForgotPassword = hideForgotPassword;
     window.loginWithLinkedIn = loginWithLinkedIn;
-    window.updateCompanyEmail = updateCompanyEmail;
-    // Register the NEW password reset functions
-    window.sendPasswordResetEmail = sendPasswordResetOtp;
+    window.sendPasswordResetOtp = sendPasswordResetOtp;
     window.verifyPasswordResetOtp = verifyPasswordResetOtp;
     window.resetPassword = resetPassword;
     window.createOrganization = createOrganization;
+    window.createWorkspace = createWorkspace;
+    window.requestToJoin = requestToJoin;
+    window.updateCompanyEmail = updateCompanyEmail;
 
-    // --- CLEANED UP LOAD TIME LOGIC ---
-    window.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        if (urlParams.get('linkedin_auth_success') === 'true') {
-            history.replaceState({}, document.title, window.location.pathname);
-            const unsubscribe = auth.onAuthStateChanged(user => {
-                if (user) {
-                    handleSuccessfulAuth();
-                    unsubscribe();
-                }
-            });
+    // Listen for auth state changes to automatically handle login/logout
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            console.log("Auth state changed: User is logged in.", user.uid);
+            // If the user is logged in, but the onboarding section is hidden, it means
+            // this is a fresh login or page load, so we should check their status.
+            if (onboardingSection.classList.contains('hidden')) {
+                handleSuccessfulAuth();
+            }
+        } else {
+            console.log("Auth state changed: User is logged out.");
         }
     });
 
   </script>
-</body>
-</html>
-  
 </body>
 </html>
